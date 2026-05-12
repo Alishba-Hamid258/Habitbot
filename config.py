@@ -5,8 +5,13 @@ from dotenv import load_dotenv
 load_dotenv()
 
 class Config:
-    # Check Streamlit Secrets first (for cloud), then Env (for local)
-    GROQ_API_KEY = st.secrets.get("GROQ_API_KEY") or os.getenv("GROQ_API_KEY")
+    try:
+        # Check Streamlit Secrets first (for cloud)
+        GROQ_API_KEY = st.secrets.get("GROQ_API_KEY") or os.getenv("GROQ_API_KEY")
+    except Exception:
+        # Fallback to local Env for local dev or if secrets not setup
+        GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+    
     MODEL = "llama-3.1-8b-instant"   # Active & fast
 
 SYSTEM_PROMPT = """
