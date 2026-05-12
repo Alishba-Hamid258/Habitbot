@@ -119,7 +119,7 @@ if "logout_triggered" not in st.session_state:
 if st.session_state.user_id is None and not st.session_state.logout_triggered:
     # Attempt to read cookie
     saved_uid = cookie_manager.get(cookie="habitbot_user_id")
-    if saved_uid:
+    if saved_uid and st.session_state.user_id != int(saved_uid):
         st.session_state.user_id = int(saved_uid)
         st.rerun()
 
