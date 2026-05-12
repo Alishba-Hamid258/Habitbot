@@ -6,6 +6,15 @@ import io
 from datetime import datetime
 import pandas as pd
 from db import get_connection
+import streamlit as st
+
+@st.cache_data(ttl=60)
+def get_habit_stats_cached(user_id):
+    return get_habit_stats(user_id)
+
+@st.cache_data(ttl=300)
+def get_heatmap_data_cached(user_id):
+    return get_heatmap_data(user_id)
 
 def is_on_topic(prompt: str, history: list = None) -> bool:
     prompt_lower = prompt.lower()

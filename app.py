@@ -402,7 +402,7 @@ with tab_chat:
 
 # HELPER FOR HEATMAP
 def show_consistency_heatmap(user_id):
-    df = get_heatmap_data(user_id)
+    df = get_heatmap_data_cached(user_id)
     if df.empty:
         st.write("No data available for heatmap.")
         return
