@@ -3,7 +3,7 @@ import os
 
 import streamlit as st
 
-DB_NAME = "habitbot.db"
+DB_NAME = ".streamlit/habitbot.db"
 
 def get_connection():
     conn = sqlite3.connect(DB_NAME, check_same_thread=False)
