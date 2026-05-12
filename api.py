@@ -13,7 +13,11 @@ log = logging.getLogger(__name__)
 
 def call_llm(messages: list[dict], stream: bool = False, image_data: str = None):
     if not Config.GROQ_API_KEY:
-        return "Error: GROQ_API_KEY missing in .env"
+        msg = "Error: GROQ_API_KEY missing. Please add it to your Streamlit Secrets."
+        if stream:
+            def err_gen(): yield msg
+            return err_gen()
+        return msg
 
     url = "https://api.groq.com/openai/v1/chat/completions"
     headers = {
@@ -80,8 +84,16 @@ def call_llm(messages: list[dict], stream: bool = False, image_data: str = None)
     except httpx.HTTPStatusError as exc:
         err = exc.response.text
         log.error("=== GROQ ERROR %s ===\n%s", exc.response.status_code, err)
-        return f"API error: {err}"
+        msg = f"API error: {err}"
+        if stream:
+            def err_gen(): yield msg
+            return err_gen()
+        return msg
     except Exception as exc:
         log.exception("=== UNEXPECTED ERROR ===")
-        return f"Error: {exc}"
+        msg = f"Error: {exc}"
+        if stream:
+            def err_gen(): yield msg
+            return err_gen()
+        return msg
 

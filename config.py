@@ -1,11 +1,10 @@
-# config.py
-import os
-from dotenv import load_dotenv
+import streamlit as st
 
 load_dotenv()
 
 class Config:
-    GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+    # Check Streamlit Secrets first (for cloud), then Env (for local)
+    GROQ_API_KEY = st.secrets.get("GROQ_API_KEY") or os.getenv("GROQ_API_KEY")
     MODEL = "llama-3.1-8b-instant"   # Active & fast
 
 SYSTEM_PROMPT = """
