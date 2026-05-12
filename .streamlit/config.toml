@@ -1,0 +1,6 @@
+[server]
+# Disable the file watcher to prevent infinite loops when the database is updated
+fileWatcherType = "none"
+
+[browser]
+gatherUsageStats = false
