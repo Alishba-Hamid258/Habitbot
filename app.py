@@ -17,6 +17,10 @@ from utils import (
     archive_current_chat, get_chat_archives, get_archived_messages
 )
 from auth import create_user, verify_user
+from db import init_db
+
+# Initialize database tables on startup
+init_db()
 
 # Page Config
 st.set_page_config(page_title="HabitBot | Your Personal Coach", layout="wide", page_icon="🤖")
