@@ -1,0 +1,21 @@
+# Secrets & Config
+.env
+config_private.py
+
+# Database
+habitbot.db
+habitbot.db-journal
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+
+# Streamlit
+.streamlit/
+! .streamlit/config.toml
+
+# Logs
+*.log
