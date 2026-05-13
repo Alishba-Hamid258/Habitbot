@@ -57,138 +57,94 @@ def _cached_habit_stats(user_id):
 from auth import create_user, verify_user
 from db import init_db
 
+# Page Config (First Streamlit call)
+st.set_page_config(page_title="HabitBot | Your Personal Coach", layout="wide", page_icon="🤖", initial_sidebar_state="expanded")
+
 # Initialize database tables on startup
 init_db()
 
-# Page Config
-st.set_page_config(page_title="HabitBot | Your Personal Coach", layout="wide", page_icon="🤖")
+# (PWA CSS moved to bottom)
 
-# ==========================================
-# PWA & MOBILE OPTIMIZATION (CSS & META)
-# ==========================================
-pwa_html = """
-<style>
-    /* 1. Hide Streamlit Branding & Reclaim Space */
-    header {visibility: hidden;}
-    footer {visibility: hidden;}
-    #MainMenu {visibility: hidden;}
-    .stDeployButton {display:none;}
-    
-    .block-container {
-        padding-top: 1rem !important;
-        padding-bottom: 2rem !important;
-        padding-left: 0.5rem !important;
-        padding-right: 0.5rem !important;
-    }
+# (Cookie manager moved to bottom for safety)
 
-    /* 2. Thumb-Friendly UI */
-    .stCheckbox label p {
-        font-size: 1.1rem !important;
-        padding: 8px 0 !important;
-    }
-    
-    div[data-testid="stButton"] button {
-        height: 3.2rem !important;
-        font-weight: 600 !important;
-        border-radius: 10px !important;
-    }
-
-    /* 3. Horizontal Scroll for Wide Components (Heatmap) */
-    div[data-testid="stPlotlyChart"] {
-        overflow-x: auto !important;
-        background: rgba(255, 255, 255, 0.03);
-        border-radius: 12px;
-        padding: 5px;
-    }
-
-    /* 4. Tab Navigation Optimization */
-    button[data-baseweb="tab"] {
-        font-size: 0.9rem !important;
-        padding-left: 10px !important;
-        padding-right: 10px !important;
-    }
-
-    /* 5. Premium Chat bubbles */
-    .stChatMessage {
-        background: rgba(255, 255, 255, 0.05) !important;
-        border-radius: 20px !important;
-        border: 1px solid rgba(255, 255, 255, 0.1) !important;
-        margin-bottom: 15px !important;
-        backdrop-filter: blur(10px);
-        max-width: 85% !important;
-    }
-    
-    /* Align User messages right, Assistant left (Simulated) */
-    div[data-testid="stChatMessage"]:has(div[aria-label="chat user"]) {
-        margin-left: auto !important;
-        background: rgba(0, 104, 201, 0.1) !important;
-        border-color: rgba(0, 104, 201, 0.3) !important;
-    }
-
-    .stChatInputContainer {
-        border-radius: 20px !important;
-        border: 1px solid rgba(255, 255, 255, 0.2) !important;
-    }
-
-    /* 6. Standalone App Feel */
-    @media all and (display-mode: standalone) {
-        body { background-color: #0E1117; }
-    }
-</style>
-
-<!-- PWA Metadata -->
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="theme-color" content="#0E1117">
-<link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/190/190411.png">
-"""
-st.markdown(pwa_html, unsafe_allow_html=True)
-
-# COOKIE MANAGER INIT
-cookie_manager = stx.CookieManager(key="habitbot_cookie_manager")
-
-# SESSION STATE INIT
-if "user_id" not in st.session_state:
-    st.session_state.user_id = None
-if "logout_triggered" not in st.session_state:
-    st.session_state.logout_triggered = False
-
-# PERSISTENT LOGIN RECOVERY
-if st.session_state.user_id is None and not st.session_state.logout_triggered:
-    # 1. Try URL Query Params first (Fastest/Most Reliable for Refreshes)
-    if "uid" in st.query_params:
-        try:
-            q_uid = int(st.query_params["uid"])
-            st.session_state.user_id = q_uid
-            st.session_state.sync_attempts = 0
-            st.rerun()
-        except:
-            pass
-
-    # 2. Fallback to Cookie Sync (Slower)
-    if "sync_attempts" not in st.session_state: st.session_state.sync_attempts = 0
-    try:
-        saved_uid = cookie_manager.get(cookie="habitbot_v4_uid")
-        if saved_uid:
-            st.session_state.user_id = int(saved_uid)
-            st.query_params["uid"] = str(saved_uid) # Sync back to URL for next refresh
-            st.session_state.sync_attempts = 0
-            st.rerun()
-    except:
-        pass
-
-    if st.session_state.sync_attempts < 5:
-        st.session_state.sync_attempts += 1
-        st.caption("🔄 Reconnecting...")
-        import time
-        time.sleep(0.1)
-        st.rerun()
-
+# SESSION STATE INIT (ALL DEFAULTS AT THE TOP)
+if "user_id" not in st.session_state: st.session_state.user_id = None
+if "logout_triggered" not in st.session_state: st.session_state.logout_triggered = False
+if "sync_attempts" not in st.session_state: st.session_state.sync_attempts = 0
+if "current_page" not in st.session_state: st.session_state.current_page = "💬 Habit Coach"
 if "last_input" not in st.session_state: st.session_state.last_input = ""
 if "timer_mode" not in st.session_state: st.session_state.timer_mode = "🍅 Focus"
 if "timer_active" not in st.session_state: st.session_state.timer_active = False
-if "timer_seconds" not in st.session_state: st.session_state.timer_seconds = 1500 # Default 25 min
+if "timer_seconds" not in st.session_state: st.session_state.timer_seconds = 1500
 if "timer_max_seconds" not in st.session_state: st.session_state.timer_max_seconds = 1500
+
+# PERSISTENT LOGIN RECOVERY (Simplified)
+if st.session_state.user_id is None and not st.session_state.logout_triggered:
+    if "uid" in st.query_params:
+        try: st.session_state.user_id = int(st.query_params["uid"])
+        except: pass
+
+# GLOBAL SETUP
+st.markdown(get_permission_js(), unsafe_allow_html=True)
+
+# CALLBACKS (Shared between Sidebar and Main App)
+def get_callbacks(user_id):
+    return {
+        "delete_habit": lambda idx: delete_habit(user_id, idx),
+        "toggle_freeze": lambda: (unlog_habit(user_id, "❄️ Freeze Day") if "❄️ Freeze Day" in get_todays_logged_habits(user_id) else log_habit(user_id, "❄️ Freeze Day", "System")),
+        "add_core": lambda: (save_core_habits(user_id, load_core_habits(user_id) + [st.session_state.new_core_habit_in.strip()]) if st.session_state.new_core_habit_in.strip() and st.session_state.new_core_habit_in.strip() not in load_core_habits(user_id) else None),
+        "delete_core": lambda idx: (save_core_habits(user_id, [h for i, h in enumerate(load_core_habits(user_id)) if i != idx])),
+        "toggle_daily": lambda h: (unlog_habit(user_id, h) if h in get_todays_logged_habits(user_id) else log_habit(user_id, h, "Daily Matrix"))
+    }
+
+# PERSISTENT LOGIN RECOVERY (One-time check, no reruns)
+if st.session_state.user_id is None and not st.session_state.logout_triggered:
+    if "uid" in st.query_params:
+        try: st.session_state.user_id = int(st.query_params["uid"])
+        except: pass
+
+# GLOBAL COMPONENTS
+cookie_manager = stx.CookieManager(key="habitbot_cookie_manager")
+
+# HELPER FOR HEATMAP
+def show_consistency_heatmap(user_id):
+    df = _cached_heatmap_data(user_id)
+    if df.empty:
+        st.write("No data available for heatmap.")
+        return
+    df['date'] = pd.to_datetime(df['date'])
+    df['week_of_year'] = df['date'].dt.isocalendar().week
+    df['year'] = df['date'].dt.year
+    df['day_of_week'] = df['date'].dt.day_name()
+    day_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+    df['week_id'] = df['year'].astype(str) + "-W" + df['week_of_year'].astype(str).str.zfill(2)
+    pivot = df.pivot(index='day_of_week', columns='week_id', values='count').reindex(day_order)
+    display_cols = [c.split("-W")[-1] for c in pivot.columns]
+    fig = px.imshow(pivot, labels=dict(x="Weeks", y="Day", color="Habits"), x=display_cols, y=pivot.index, color_continuous_scale="Blues", template="plotly_dark")
+    fig.update_layout(height=250, margin=dict(l=0, r=0, t=10, b=10), coloraxis_showscale=False)
+    st.plotly_chart(fig, use_container_width=True)
+
+# SIDEBAR
+with st.sidebar:
+    st.title("🤖 HabitBot")
+    if st.session_state.user_id:
+        uid = st.session_state.user_id
+        cb = get_callbacks(uid)
+        st.markdown("### 🧭 Navigation")
+        nav_options = {"💬 Habit Coach": "chat", "📊 Analytics": "stats", "✅ To-Do List": "todo", "📓 Logbook": "logbook", "📚 Library": "library"}
+        st.session_state.current_page = st.radio("Go to:", list(nav_options.keys()), index=list(nav_options.keys()).index(st.session_state.current_page))
+        st.markdown("---")
+        st.metric("Streak", f"{get_current_streak(uid)}d")
+        st.metric("Discipline", f"{get_consistency_score(uid)}%")
+        if st.button("Logout", use_container_width=True):
+            st.session_state.user_id = None
+            st.session_state.logout_triggered = True
+            cookie_manager.delete("habitbot_v4_uid")
+            st.query_params.clear()
+            st.rerun()
+    else:
+        st.info("👋 Please log in.")
+# (End of setup)
 
 # ==========================================
 # AUTHENTICATION SCREEN
@@ -240,135 +196,28 @@ if st.session_state.user_id is None:
 
 # ==========================================
 # MAIN APP (AUTHENTICATED)
-# ==========================================
 uid = st.session_state.user_id
 
-# REQUEST NOTIFICATION PERMISSIONS
-st.markdown(get_permission_js(), unsafe_allow_html=True)
-
-# CALLBACKS
-def delete_habit_cb(idx): delete_habit(uid, idx)
-def toggle_freeze_cb():
-    logged = get_todays_logged_habits(uid)
-    if "❄️ Freeze Day" in logged: unlog_habit(uid, "❄️ Freeze Day")
-    else: log_habit(uid, "❄️ Freeze Day", "System")
-def add_core_habit_cb():
-    h = st.session_state.new_core_habit_in.strip()
-    if h:
-        current = load_core_habits(uid)
-        if h not in current:
-            current.append(h)
-            save_core_habits(uid, current)
-            st.session_state.new_core_habit_in = ""
-def delete_core_habit_cb(idx):
-    current = load_core_habits(uid)
-    current.pop(idx)
-    save_core_habits(uid, current)
-def toggle_daily_habit_cb(habit_text):
-    logged = get_todays_logged_habits(uid)
-    if habit_text in logged: unlog_habit(uid, habit_text)
-    else: log_habit(uid, habit_text, "Daily Matrix")
-
-# SIDEBAR
-with st.sidebar:
-    st.title("🤖 HabitBot")
-    st.caption(f"Logged in as User ID: {uid}")
-    if st.button("Logout", type="secondary", width="stretch"):
-        st.session_state.user_id = None
-        st.session_state.logout_triggered = True # Tell the app we want to stay out
-        cookie_manager.delete("habitbot_v4_uid")
-        st.query_params.clear()
-        st.rerun()
-
-    st.markdown("---")
-    
-    # ⏲️ Focus Timer
-    st.markdown("### ⏲️ Focus Timer")
-    with st.expander("⚙️ Timer Settings"):
-        f_min = st.number_input("Focus (min)", 1, 120, 25, key="cfg_focus")
-        s_min = st.number_input("Short Break", 1, 30, 5, key="cfg_short")
-        l_min = st.number_input("Long Break", 1, 60, 15, key="cfg_long")
-
-    POMODORO_MODES = {
-        "🍅 Focus": f_min * 60,
-        "☕ Short Break": s_min * 60,
-        "🛋️ Long Break": l_min * 60
-    }
-
-    @st.fragment(run_every="1s")
-    def smooth_timer():
-        modes = list(POMODORO_MODES.keys())
-        current_idx = modes.index(st.session_state.timer_mode)
-        
-        if st.session_state.timer_max_seconds != POMODORO_MODES[st.session_state.timer_mode] and not st.session_state.timer_active:
-             st.session_state.timer_max_seconds = POMODORO_MODES[st.session_state.timer_mode]
-             st.session_state.timer_seconds = POMODORO_MODES[st.session_state.timer_mode]
-
-        selected_mode = st.radio("Mode", modes, index=current_idx, horizontal=True, label_visibility="collapsed")
-        if selected_mode != st.session_state.timer_mode:
-            st.session_state.timer_mode = selected_mode
-            st.session_state.timer_max_seconds = POMODORO_MODES[selected_mode]
-            st.session_state.timer_seconds = POMODORO_MODES[selected_mode]
-            st.session_state.timer_active = False
+# FALLBACK NAVIGATION (FOR MOBILE/MISSING SIDEBAR)
+if st.session_state.user_id:
+    with st.container():
+        c1, c2, c3 = st.columns([0.4, 0.3, 0.3])
+        pages = ["💬 Habit Coach", "📊 Analytics", "✅ To-Do List", "📓 Logbook", "📚 Library"]
+        fallback_page = c1.selectbox("Navigation Menu", pages, index=pages.index(st.session_state.current_page), key="fallback_nav", label_visibility="collapsed")
+        if fallback_page != st.session_state.current_page:
+            st.session_state.current_page = fallback_page
             st.rerun()
-
-        if st.session_state.timer_active and st.session_state.timer_seconds > 0:
-            st.session_state.timer_seconds -= 1
-            if st.session_state.timer_seconds <= 0:
-                st.session_state.timer_active = False
-                st.balloons()
-                log_focus_session(uid, st.session_state.timer_mode, st.session_state.timer_max_seconds // 60)
-                st.markdown(get_notification_js("HabitBot ⏲️", f"{st.session_state.timer_mode} session complete!"), unsafe_allow_html=True)
-                st.markdown(get_chime_html(), unsafe_allow_html=True)
-                st.toast(f"✅ {st.session_state.timer_mode} session complete!", icon="🔔")
-
-        mins, secs = divmod(st.session_state.timer_seconds, 60)
-        st.markdown(f"<h1 style='text-align: center;'>{mins:02d}:{secs:02d}</h1>", unsafe_allow_html=True)
-        st.progress(st.session_state.timer_seconds / st.session_state.timer_max_seconds)
-        
-        c1, c2 = st.columns(2)
-        if st.session_state.timer_active:
-            if c1.button("⏹ Pause", width="stretch"): st.session_state.timer_active = False; st.rerun()
-        else:
-            if c1.button("🚀 Start", width="stretch"): st.session_state.timer_active = True; st.rerun()
-        if c2.button("🔄 Reset", width="stretch"):
-            st.session_state.timer_seconds = st.session_state.timer_max_seconds
-            st.session_state.timer_active = False
-            st.rerun()
-
-    smooth_timer()
-
+        c2.caption(f"🔥 Streak: {get_current_streak(uid)}d")
+        c3.caption(f"🎯 Score: {get_consistency_score(uid)}%")
     st.markdown("---")
-    st.markdown("### 🛡️ Daily Matrix")
-    core_habits = load_core_habits(uid)
-    todays_logged = get_todays_logged_habits(uid)
-    
-    is_frozen = "❄️ Freeze Day" in todays_logged
-    btn_text = "☀️ Unfreeze Day" if is_frozen else "❄️ Use Freeze Day"
-    st.button(btn_text, on_click=toggle_freeze_cb, width="stretch")
 
-    for h in core_habits:
-        is_done = h in todays_logged
-        st.checkbox(h, value=is_done, key=f"daily_check_{h}", on_change=toggle_daily_habit_cb, args=(h,))
-
-    with st.expander("⚙️ Manage Core Habits"):
-        st.text_input("New Core Habit:", key="new_core_habit_in")
-        st.button("Add Habit", on_click=add_core_habit_cb)
-        for i, h in enumerate(core_habits):
-            col1, col2 = st.columns([0.8, 0.2])
-            col1.write(h)
-            col2.button("🗑️", key=f"del_core_{i}", on_click=delete_core_habit_cb, args=(i,))
-
-# MAIN TABS
-tab_chat, tab_stats, tab_todo, tab_logbook, tab_library = st.tabs(["💬 Habit Coach", "📊 Analytics", "✅ To-Do List", "📓 Logbook", "📚 Library"])
-
-# INIT MESSAGES
+# PAGE DISPATCHER
+page = st.session_state.current_page
 if "messages" not in st.session_state:
     saved = load_history(uid)
     st.session_state.messages = saved if saved else [{"role": "system", "content": SYSTEM_PROMPT}]
 
-# TAB 1: CHAT
-with tab_chat:
+if page == "💬 Habit Coach":
     if "view_archive" not in st.session_state: st.session_state.view_archive = None
 
     if st.session_state.view_archive:
@@ -377,16 +226,12 @@ with tab_chat:
             st.session_state.view_archive = None
             st.rerun()
         col_title.markdown("### 📜 Archived Session")
-        
         for m in st.session_state.view_archive[1:]:
-            with st.chat_message(m["role"]):
-                st.markdown(m["content"])
-        st.stop() # Prevent showing the active chat/input when viewing archive
+            with st.chat_message(m["role"]): st.markdown(m["content"])
+        st.stop()
 
     col1, col2 = st.columns([0.7, 0.3])
     col1.markdown("### 💬 Habit Coach")
-    
-    # Archive Check
     if col2.button("➕ New Chat", width="stretch"):
         archive_current_chat(uid, st.session_state.messages)
         st.session_state.messages = [{"role": "system", "content": SYSTEM_PROMPT}]
@@ -401,14 +246,12 @@ with tab_chat:
                 if arch_col.button(f"📄 {ts} | {name}", key=f"arch_{sid}", use_container_width=True):
                     st.session_state.view_archive = get_archived_messages(uid, sid)
                     st.rerun()
-                if del_col.button("🗑️", key=f"del_{sid}", help="Delete this session"):
+                if del_col.button("🗑️", key=f"del_{sid}"):
                     delete_chat_archive(uid, sid)
                     st.rerun()
-        else:
-            st.write("No archived sessions yet.")
+        else: st.write("No archived sessions yet.")
     
     st.markdown("---")
-
     for m in st.session_state.messages[1:]:
         avatar = "🤖" if m["role"] == "assistant" else "👤"
         with st.chat_message(m["role"], avatar=avatar):
@@ -417,12 +260,10 @@ with tab_chat:
             if "[FILE ATTACHMENT]:" in content:
                 main_text, attachment = content.split("[FILE ATTACHMENT]:", 1)
                 st.markdown(main_text.strip())
-                with st.expander("📄 View Attached Document"): st.text(attachment.strip())
+                with st.expander("📄 View Attached"): st.text(attachment.strip())
             else: st.markdown(content)
 
-    with st.popover("📎", width="content"):
-        uploaded_file = st.file_uploader("Attach context", type=["png", "jpg", "jpeg", "webp", "pdf", "txt", "md"])
-
+    uploaded_file = st.file_uploader("Attach context", type=["png", "jpg", "jpeg", "webp", "pdf", "txt", "md"])
     if prompt := st.chat_input("Ask about habits…"):
         if prompt != st.session_state.last_input:
             st.session_state.last_input = prompt
@@ -432,76 +273,25 @@ with tab_chat:
             if file_payload:
                 if file_payload["type"] == "image": image_data = file_payload["data"]
                 else: final_prompt = f"{prompt}\n\n[FILE ATTACHMENT]:\n{file_payload['data']}"
-
-            with st.chat_message("user", avatar="👤"):
-                st.markdown(prompt)
-                if file_payload: st.caption(f"📎 Attached: {uploaded_file.name}")
-
+            with st.chat_message("user", avatar="👤"): st.markdown(prompt)
             if not is_on_topic(prompt, st.session_state.messages):
-                refusal = "I specialized in habits and productivity. Try asking about routines!"
+                refusal = "I specialized in habits and productivity."
                 with st.chat_message("assistant", avatar="🤖"): st.markdown(refusal)
                 st.session_state.messages.append({"role": "assistant", "content": refusal})
             else:
                 st.session_state.messages.append({"role": "user", "content": final_prompt})
                 habit_summary = get_habit_context(uid)
                 dynamic_messages = st.session_state.messages.copy()
-                dynamic_messages[0] = {"role": "system", "content": f"{SYSTEM_PROMPT}\n\nUSER'S CURRENT PROGRESS:\n{habit_summary}"}
+                dynamic_messages[0] = {"role": "system", "content": f"{SYSTEM_PROMPT}\n\nPROGRESS:\n{habit_summary}"}
                 with st.chat_message("assistant", avatar="🤖"):
                     llm_response = call_llm(dynamic_messages, stream=True, image_data=image_data)
-                    if isinstance(llm_response, str):
-                        st.markdown(llm_response)
-                        reply = llm_response
-                    else:
-                        reply = st.write_stream(llm_response)
+                    reply = st.write_stream(llm_response) if not isinstance(llm_response, str) else st.markdown(llm_response) or llm_response
                 st.session_state.messages.append({"role": "assistant", "content": reply})
                 save_history(uid, st.session_state.messages)
-                st.session_state.last_input = ""
                 st.rerun()
 
-# HELPER FOR HEATMAP
-def show_consistency_heatmap(user_id):
-    df = _cached_heatmap_data(user_id)
-    if df.empty:
-        st.write("No data available for heatmap.")
-        return
-
-    df['date'] = pd.to_datetime(df['date'])
-    df['week_of_year'] = df['date'].dt.isocalendar().week
-    df['year'] = df['date'].dt.year
-    df['day_of_week'] = df['date'].dt.day_name()
-    
-    # Sort days
-    day_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-    
-    # Create a unique week identifier for the pivot
-    df['week_id'] = df['year'].astype(str) + "-W" + df['week_of_year'].astype(str).str.zfill(2)
-    
-    pivot = df.pivot(index='day_of_week', columns='week_id', values='count').reindex(day_order)
-    
-    # Clean column names for display (just show week number or nothing)
-    display_cols = [c.split("-W")[-1] for c in pivot.columns]
-
-    fig = px.imshow(
-        pivot,
-        labels=dict(x="Weeks (Last 12 Months)", y="Day of Week", color="Habits"),
-        x=display_cols,
-        y=pivot.index,
-        color_continuous_scale="Blues",
-        aspect="auto",
-        template="plotly_dark"
-    )
-    
-    fig.update_layout(
-        height=250,
-        margin=dict(l=0, r=0, t=10, b=10),
-        xaxis_nticks=12,
-        coloraxis_showscale=False,
-        dragmode=False # Disable drag for better mobile scrolling
-    )
-    st.plotly_chart(fig, width="content", config={'displayModeBar': False})
-
-# TAB 2: ANALYTICS
-with tab_stats:
+# PAGE: ANALYTICS
+elif page == "📊 Analytics":
     st.subheader("Performance Analytics")
     
     # HEATMAP AT THE TOP
@@ -540,8 +330,8 @@ with tab_stats:
         with sub_tab_week: st.bar_chart(weekly.set_index('week'))
         with sub_tab_month: st.bar_chart(monthly.set_index('month'))
 
-# TAB 3: TO-DO
-with tab_todo:
+# PAGE: TO-DO
+elif page == "✅ To-Do List":
     st.subheader("AI Task Architect")
     todos = load_todos(uid)
     
@@ -606,8 +396,8 @@ with tab_todo:
             save_todos(uid, todos)
             st.rerun()
 
-# TAB 4: LOGBOOK
-with tab_logbook:
+# PAGE: LOGBOOK
+elif page == "📓 Logbook":
     st.subheader("The Vault")
     
     with st.expander("🌙 Evening Reflection"):
@@ -638,8 +428,8 @@ with tab_logbook:
         st.dataframe(all_logs, width="stretch")
     else: st.write("No entries in your logbook yet.")
 
-# TAB 5: LIBRARY
-with tab_library:
+# PAGE: LIBRARY
+elif page == "📚 Library":
     st.subheader("📚 Mastery Library")
     st.caption("Curated resources to sharpen your habits and mindset.")
 
@@ -710,3 +500,15 @@ with tab_library:
                 st.markdown(f"#### {v['title']}")
                 st.caption(f"Channel: {v['channel']}")
                 st.video(v['url'])
+# FINAL PWA CSS & META
+pwa_html = """
+<style>
+    header[data-testid="stHeader"] { visibility: visible !important; background: rgba(14, 17, 23, 0.9) !important; }
+    .block-container { padding-top: 1rem !important; }
+    [data-testid="stSidebar"] { background-color: #0E1117 !important; }
+</style>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0E1117">
+"""
+st.markdown(pwa_html, unsafe_allow_html=True)
