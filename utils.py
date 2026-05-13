@@ -464,3 +464,7 @@ def get_permission_js():
 def get_chime_html():
     chime_url = "https://actions.google.com/sounds/v1/alarms/beep_short.ogg"
     return f"""<div style="display:none;"><audio autoplay><source src="{chime_url}" type="audio/ogg"></audio></div>"""
+
+def get_ticking_html():
+    tick_url = "https://www.soundjay.com/clock/clock-ticking-2.mp3"
+    return f"""<div style="display:none;"><audio autoplay loop><source src="{tick_url}" type="audio/mpeg"></audio></div>"""

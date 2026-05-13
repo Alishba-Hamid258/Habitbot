@@ -152,18 +152,48 @@ with st.sidebar:
         c1.metric("Streak", f"{get_current_streak(uid)}d")
         c2.metric("Discipline", f"{get_consistency_score(uid)}%")
 
-        # Focus Timer
+        # Pomodoro Timer
         st.markdown("---")
-        st.markdown("### ⏲️ Focus Timer")
-        ts = st.session_state.get("timer_seconds", 1500)
-        mins, secs = divmod(ts, 60)
-        st.markdown(f"<h1 style='text-align: center;'>{mins:02d}:{secs:02d}</h1>", unsafe_allow_html=True)
+        st.markdown("### ⏲️ Pomodoro")
+        
+        # Mode Selection
+        modes = {"Focus": 1500, "Short Break": 300, "Long Break": 900}
+        m_cols = st.columns(3)
+        if m_cols[0].button("🎯", help="Focus (25m)"): 
+            st.session_state.timer_seconds = 1500
+            st.session_state.timer_max_seconds = 1500
+            st.session_state.timer_active = False
+            st.rerun()
+        if m_cols[1].button("☕", help="Short Break (5m)"): 
+            st.session_state.timer_seconds = 300
+            st.session_state.timer_max_seconds = 300
+            st.session_state.timer_active = False
+            st.rerun()
+        if m_cols[2].button("🧘", help="Long Break (15m)"): 
+            st.session_state.timer_seconds = 900
+            st.session_state.timer_max_seconds = 900
+            st.session_state.timer_active = False
+            st.rerun()
+
+        # Custom Adjustment
+        adj_mins = st.number_input("Minutes", value=st.session_state.timer_seconds // 60, min_value=1, max_value=120, step=1, key="sb_adj_mins")
+        if adj_mins * 60 != st.session_state.timer_seconds and not st.session_state.timer_active:
+            st.session_state.timer_seconds = adj_mins * 60
+            st.session_state.timer_max_seconds = adj_mins * 60
+
+        # Display
+        mins, secs = divmod(st.session_state.timer_seconds, 60)
+        st.markdown(f"<h1 style='text-align: center; color: #FF4B4B;'>{mins:02d}:{secs:02d}</h1>", unsafe_allow_html=True)
+        
         if st.session_state.timer_active:
-            if st.button("⏹ Pause", use_container_width=True, key="sb_pause"): 
+            if st.button("⏹ Pause Timer", use_container_width=True, key="sb_pause"): 
                 st.session_state.timer_active = False
                 st.rerun()
+            # Ticking Sound
+            from utils import get_ticking_html
+            st.markdown(get_ticking_html(), unsafe_allow_html=True)
         else:
-            if st.button("🚀 Start", use_container_width=True, key="sb_start"): 
+            if st.button("🚀 Start Timer", use_container_width=True, key="sb_start"): 
                 st.session_state.timer_active = True
                 st.rerun()
 
@@ -231,17 +261,32 @@ if st.session_state.user_id is None:
 # MAIN APP (AUTHENTICATED)
 uid = st.session_state.user_id
 
-# FALLBACK NAVIGATION (FOR MOBILE/MISSING SIDEBAR)
-if st.session_state.user_id:
+    # Top Navigation (Tabs style)
+    pages_map = {
+        "💬 Coach": "💬 Habit Coach", 
+        "📊 Analytics": "📊 Analytics", 
+        "✅ Tasks": "✅ To-Do List", 
+        "📓 Logbook": "📓 Logbook", 
+        "📚 Library": "📚 Library"
+    }
+    
+    # Header bar with Nav and Stats
     with st.container():
-        c1, c2, c3 = st.columns([0.4, 0.3, 0.3])
-        pages = ["💬 Habit Coach", "📊 Analytics", "✅ To-Do List", "📓 Logbook", "📚 Library"]
-        fallback_page = c1.selectbox("Navigation Menu", pages, index=pages.index(st.session_state.current_page), key="fallback_nav", label_visibility="collapsed")
-        if fallback_page != st.session_state.current_page:
-            st.session_state.current_page = fallback_page
-            st.rerun()
-        c2.caption(f"🔥 Streak: {get_current_streak(uid)}d")
-        c3.caption(f"🎯 Score: {get_consistency_score(uid)}%")
+        cols = st.columns([0.6, 0.4])
+        with cols[0]:
+            choice = st.segmented_control(
+                "Navigation", 
+                options=list(pages_map.keys()), 
+                default=next(k for k, v in pages_map.items() if v == st.session_state.current_page),
+                label_visibility="collapsed",
+                key="top_nav_bar"
+            )
+            if choice:
+                st.session_state.current_page = pages_map[choice]
+        
+        with cols[1]:
+            st.markdown(f"<p style='text-align:right; margin:0;'>🔥 {get_current_streak(uid)}d | 🎯 {get_consistency_score(uid)}%</p>", unsafe_allow_html=True)
+    
     st.markdown("---")
 
 # PAGE DISPATCHER
