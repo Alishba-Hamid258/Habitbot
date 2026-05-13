@@ -243,7 +243,7 @@ if st.session_state.user_id is None:
             with tab_login:
                 u = st.text_input("Username", key="l_u")
                 p = st.text_input("Password", type="password", key="l_p")
-                if st.button("Login", width="stretch"):
+                if st.button("Login", use_container_width=True):
                     uid = verify_user(u, p)
                     if uid:
                         st.session_state.user_id = uid
@@ -262,7 +262,7 @@ if st.session_state.user_id is None:
                 new_u = st.text_input("Choose Username", key="s_u")
                 new_p = st.text_input("Choose Password", type="password", key="s_p")
                 confirm_p = st.text_input("Confirm Password", type="password", key="s_pc")
-                if st.button("Create Account", width="stretch"):
+                if st.button("Create Account", use_container_width=True):
                     if new_p != confirm_p:
                         st.error("Passwords do not match!")
                     elif len(new_p) < 6:
@@ -318,7 +318,7 @@ if page == "💬 Habit Coach":
 
     if st.session_state.view_archive:
         col_back, col_title = st.columns([0.3, 0.7])
-        if col_back.button("⬅️ Back to Active Chat", width="stretch"):
+        if col_back.button("⬅️ Back to Active Chat", use_container_width=True):
             st.session_state.view_archive = None
             st.rerun()
         col_title.markdown("### 📜 Archived Session")
@@ -328,7 +328,7 @@ if page == "💬 Habit Coach":
 
     col1, col2 = st.columns([0.7, 0.3])
     col1.markdown("### 💬 Habit Coach")
-    if col2.button("➕ New Chat", width="stretch"):
+    if col2.button("➕ New Chat", use_container_width=True):
         archive_current_chat(uid, st.session_state.messages)
         st.session_state.messages = [{"role": "system", "content": SYSTEM_PROMPT}]
         save_history(uid, st.session_state.messages)
@@ -515,8 +515,11 @@ elif page == "📓 Logbook":
                 data=audit_data,
                 file_name=f"HabitBot_Life_Audit_{datetime.now().strftime('%Y-%m-%d')}.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                width="stretch"
-  elif page == "📚 Library":
+                use_container_width=True
+            )
+
+# PAGE: LIBRARY
+elif page == "📚 Library":
     st.subheader("📚 Mastery Library")
     st.caption("Curated resources to sharpen your habits and mindset.")
 
