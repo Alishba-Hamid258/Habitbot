@@ -20,12 +20,23 @@ from utils import (
 
 def get_chime_html():
     return """<div style="display:none;"><script>
-        var audio = new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg");
-        audio.play().catch(e => console.log('Audio blocked:', e));
+        if (window.chimeAudio) {
+            window.chimeAudio.play().catch(e => console.log('Audio blocked:', e));
+        } else {
+            var audio = new Audio("https://www.soundjay.com/buttons/beep-07a.mp3");
+            audio.play().catch(e => console.log('Audio blocked:', e));
+        }
     </script></div>"""
 
-def get_ticking_html():
-    return "" # Removed per user request
+def get_prime_audio_js():
+    return """<script>
+        window.primeAudio = function() {
+            if (!window.chimeAudio) {
+                window.chimeAudio = new Audio("https://www.soundjay.com/buttons/beep-07a.mp3");
+                window.chimeAudio.load();
+            }
+        }
+    </script>"""
 
 def extract_json_from_text(text):
     """Robustly extract a JSON list from LLM output that may contain markdown fences or extra text."""
@@ -95,6 +106,7 @@ if st.session_state.user_id is None and not st.session_state.logout_triggered:
 
 # GLOBAL SETUP
 st.markdown(get_permission_js(), unsafe_allow_html=True)
+st.markdown(get_prime_audio_js(), unsafe_allow_html=True)
 
 # CALLBACKS (Shared between Sidebar and Main App)
 def get_callbacks(user_id):
@@ -209,6 +221,7 @@ with st.sidebar:
                     st.rerun()
             else:
                 if st.button("🚀 Start Timer", use_container_width=True, key="sb_start"): 
+                    st.markdown("<script>window.primeAudio();</script>", unsafe_allow_html=True)
                     st.session_state.timer_active = True
                     st.rerun()
         
