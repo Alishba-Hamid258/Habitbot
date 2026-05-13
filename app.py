@@ -506,6 +506,12 @@ with tab_todo:
             ai_tasks_json = call_llm(msg)
             try:
                 new_tasks = json.loads(ai_tasks_json)
+                # Normalize AI tasks to always have all required keys
+                for task in new_tasks:
+                    task.setdefault("done", False)
+                    task.setdefault("task", "Untitled Task")
+                    task.setdefault("priority", "Medium")
+                    task.setdefault("time", "")
                 todos.extend(new_tasks)
                 save_todos(uid, todos)
                 st.rerun()
@@ -525,13 +531,17 @@ with tab_todo:
     st.markdown("---")
     for i, t in enumerate(todos):
         c1, c2, c3, c4 = st.columns([0.1, 0.6, 0.2, 0.1])
-        done = c1.checkbox("", value=t["done"], key=f"todo_{i}")
-        if done != t["done"]:
+        t_done = t.get("done", False)
+        t_task = t.get("task", "Untitled Task")
+        t_pri = t.get("priority", "Medium")
+        t_time = t.get("time", "")
+        done = c1.checkbox("", value=t_done, key=f"todo_{i}")
+        if done != t_done:
             todos[i]["done"] = done
             save_todos(uid, todos)
             st.rerun()
-        c2.markdown(f"**{t['task']}**" if not t['done'] else f"~~{t['task']}~~")
-        c3.caption(f"{t['priority']} | {t['time']}")
+        c2.markdown(f"**{t_task}**" if not t_done else f"~~{t_task}~~")
+        c3.caption(f"{t_pri} | {t_time}")
         if c4.button("🗑️", key=f"del_todo_{i}"):
             todos.pop(i)
             save_todos(uid, todos)
