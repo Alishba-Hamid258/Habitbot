@@ -14,9 +14,17 @@ from utils import (
     save_reflection, load_reflections, get_all_habits,
     process_uploaded_file, get_notification_js, get_permission_js, get_chime_html,
     log_focus_session, get_total_focus_time, get_heatmap_data, generate_life_audit,
-    archive_current_chat, get_chat_archives, get_archived_messages,
-    get_habit_stats_cached, get_habit_heatmap_v2
+    archive_current_chat, get_chat_archives, get_archived_messages
 )
+
+# Cached wrappers defined here to avoid cross-file import issues on Streamlit Cloud
+@st.cache_data(ttl=300)
+def _cached_heatmap_data(user_id):
+    return get_heatmap_data(user_id)
+
+@st.cache_data(ttl=60)
+def _cached_habit_stats(user_id):
+    return get_habit_stats(user_id)
 from auth import create_user, verify_user
 from db import init_db
 
@@ -406,8 +414,7 @@ with tab_chat:
 
 # HELPER FOR HEATMAP
 def show_consistency_heatmap(user_id):
-    import utils
-    df = utils.get_habit_heatmap_v2(user_id)
+    df = _cached_heatmap_data(user_id)
     if df.empty:
         st.write("No data available for heatmap.")
         return
@@ -469,8 +476,7 @@ with tab_stats:
             st.markdown(report)
     st.markdown("---")
 
-    import utils
-    daily, weekly, monthly = utils.get_habit_stats_cached(uid)
+    daily, weekly, monthly = _cached_habit_stats(uid)
     total_focus = get_total_focus_time(uid, "today")
     st.info(f"🧠 **Deep Work Today**: {total_focus} minutes logged")
     
