@@ -28,6 +28,28 @@ def is_on_topic(prompt: str, history: list = None) -> bool:
     return False
 
 # ================================
+# HELPERS
+# ================================
+def _safe_content(content):
+    """Deeply convert message content to a plain string to prevent SQLite errors."""
+    if content is None:
+        return ""
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        # Handle vision API list format: [{"type": "text", "text": "..."}, ...]
+        texts = []
+        for part in content:
+            if isinstance(part, dict) and "text" in part:
+                texts.append(str(part["text"]))
+            elif isinstance(part, str):
+                texts.append(part)
+            else:
+                texts.append(str(part))
+        return " ".join(texts)
+    return str(content)
+
+# ================================
 # CHAT HISTORY
 # ================================
 def save_history(user_id, messages):
@@ -35,7 +57,7 @@ def save_history(user_id, messages):
     c = conn.cursor()
     c.execute("DELETE FROM chat_history WHERE user_id = ?", (user_id,))
     c.executemany("INSERT INTO chat_history (user_id, role, content) VALUES (?, ?, ?)",
-                  [(user_id, m["role"], _safe_content(m["content"])) for m in messages])
+                  [(user_id, str(m.get("role", "user")), _safe_content(m.get("content", ""))) for m in messages])
     conn.commit()
     conn.close()
 
@@ -47,13 +69,6 @@ def load_history(user_id):
     conn.close()
     return [{"role": row[0], "content": row[1]} for row in rows]
 
-def _safe_content(content):
-    """Convert message content to a plain string (handles vision API list format)."""
-    if isinstance(content, list):
-        texts = [part["text"] for part in content if isinstance(part, dict) and part.get("type") == "text"]
-        return " ".join(texts) if texts else str(content)
-    return content if isinstance(content, str) else str(content)
-
 def archive_current_chat(user_id, messages):
     if len(messages) <= 1: return
     conn = get_connection()
@@ -61,13 +76,16 @@ def archive_current_chat(user_id, messages):
     session_id = datetime.now().strftime("%Y%m%d%H%M%S")
     session_name = "Session"
     for m in messages:
-        if m["role"] == "user":
-            text = _safe_content(m["content"])
+        if m.get("role") == "user":
+            text = _safe_content(m.get("content", ""))
             session_name = (text[:30] + "...") if len(text) > 30 else text
             break
     for m in messages:
+        # Ensure role and content are strings
+        role = str(m.get("role", "assistant"))
+        content = _safe_content(m.get("content", ""))
         c.execute("INSERT INTO chat_archives (user_id, session_id, session_name, role, content) VALUES (?, ?, ?, ?, ?)",
-                  (user_id, session_id, session_name, m["role"], _safe_content(m["content"])))
+                  (user_id, session_id, str(session_name), role, content))
     conn.commit()
     conn.close()
 

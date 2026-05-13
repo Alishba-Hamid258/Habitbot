@@ -432,9 +432,7 @@ with tab_chat:
             else:
                 st.session_state.messages.append({"role": "user", "content": final_prompt})
                 habit_summary = get_habit_context(uid)
-                # Deep copy to prevent api.py from mutating session state
-                import copy
-                dynamic_messages = copy.deepcopy(st.session_state.messages)
+                dynamic_messages = st.session_state.messages.copy()
                 dynamic_messages[0] = {"role": "system", "content": f"{SYSTEM_PROMPT}\n\nUSER'S CURRENT PROGRESS:\n{habit_summary}"}
                 with st.chat_message("assistant", avatar="🤖"):
                     llm_response = call_llm(dynamic_messages, stream=True, image_data=image_data)
@@ -444,11 +442,6 @@ with tab_chat:
                     else:
                         reply = st.write_stream(llm_response)
                 st.session_state.messages.append({"role": "assistant", "content": reply})
-                # Sanitize all messages: ensure content is always a string
-                for m in st.session_state.messages:
-                    if isinstance(m["content"], list):
-                        texts = [p["text"] for p in m["content"] if isinstance(p, dict) and p.get("type") == "text"]
-                        m["content"] = " ".join(texts) if texts else ""
                 save_history(uid, st.session_state.messages)
                 st.session_state.last_input = ""
                 st.rerun()
