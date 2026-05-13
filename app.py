@@ -577,7 +577,7 @@ with tab_todo:
         t_task = t.get("task", "Untitled Task")
         t_pri = t.get("priority", "Medium")
         t_time = t.get("time", "")
-        done = c1.checkbox("", value=t_done, key=f"todo_{i}")
+        done = c1.checkbox("Done", value=t_done, key=f"todo_{i}", label_visibility="collapsed")
         if done != t_done:
             todos[i]["done"] = done
             save_todos(uid, todos)

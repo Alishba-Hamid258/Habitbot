@@ -29,6 +29,13 @@ def call_llm(messages: list[dict], stream: bool = False, image_data: str = None)
     model = Config.MODEL
     if image_data:
         model = "meta-llama/llama-4-scout-17b-16e-instruct"
+        stream = False  # Vision requests don't reliably support streaming
+        # Ensure all messages have plain text content (sanitize older messages)
+        for msg in messages:
+            if isinstance(msg.get("content"), list):
+                # Extract just the text from any previously formatted multimodal messages
+                texts = [c["text"] for c in msg["content"] if c.get("type") == "text"]
+                msg["content"] = " ".join(texts) if texts else ""
         # Reformat the last user message for multimodal input
         if messages and messages[-1]["role"] == "user":
             user_text = messages[-1]["content"]
@@ -45,12 +52,11 @@ def call_llm(messages: list[dict], stream: bool = False, image_data: str = None)
         "messages": messages,
         "temperature": 0.7,
         "max_tokens": 1000,
-        "n": 1,
         "stream": stream
     }
 
     log.debug("=== GROQ REQUEST ===")
-    log.debug("MODEL: %s", model)
+    log.debug("MODEL: %s | STREAM: %s", model, stream)
     # Note: Avoid logging the full image data in debug as it's too large
     # log.debug("PAYLOAD:\n%s", json.dumps(payload, indent=2))
 
