@@ -172,7 +172,7 @@ if st.session_state.user_id is None:
             with tab_login:
                 u = st.text_input("Username", key="l_u")
                 p = st.text_input("Password", type="password", key="l_p")
-                if st.button("Login", use_container_width=True):
+                if st.button("Login", width="stretch"):
                     uid = verify_user(u, p)
                     if uid:
                         st.session_state.user_id = uid
@@ -190,7 +190,7 @@ if st.session_state.user_id is None:
                 new_u = st.text_input("Choose Username", key="s_u")
                 new_p = st.text_input("Choose Password", type="password", key="s_p")
                 confirm_p = st.text_input("Confirm Password", type="password", key="s_pc")
-                if st.button("Create Account", use_container_width=True):
+                if st.button("Create Account", width="stretch"):
                     if new_p != confirm_p:
                         st.error("Passwords do not match!")
                     elif len(new_p) < 6:
@@ -238,7 +238,7 @@ def toggle_daily_habit_cb(habit_text):
 with st.sidebar:
     st.title("🤖 HabitBot")
     st.caption(f"Logged in as User ID: {uid}")
-    if st.button("Logout", type="secondary", use_container_width=True):
+    if st.button("Logout", type="secondary", width="stretch"):
         st.session_state.user_id = None
         st.session_state.logout_triggered = True # Tell the app we want to stay out
         cookie_manager.delete("habitbot_user_id")
@@ -292,10 +292,10 @@ with st.sidebar:
         
         c1, c2 = st.columns(2)
         if st.session_state.timer_active:
-            if c1.button("⏹ Pause", use_container_width=True): st.session_state.timer_active = False; st.rerun()
+            if c1.button("⏹ Pause", width="stretch"): st.session_state.timer_active = False; st.rerun()
         else:
-            if c1.button("🚀 Start", use_container_width=True): st.session_state.timer_active = True; st.rerun()
-        if c2.button("🔄 Reset", use_container_width=True):
+            if c1.button("🚀 Start", width="stretch"): st.session_state.timer_active = True; st.rerun()
+        if c2.button("🔄 Reset", width="stretch"):
             st.session_state.timer_seconds = st.session_state.timer_max_seconds
             st.session_state.timer_active = False
             st.rerun()
@@ -309,7 +309,7 @@ with st.sidebar:
     
     is_frozen = "❄️ Freeze Day" in todays_logged
     btn_text = "☀️ Unfreeze Day" if is_frozen else "❄️ Use Freeze Day"
-    st.button(btn_text, on_click=toggle_freeze_cb, use_container_width=True)
+    st.button(btn_text, on_click=toggle_freeze_cb, width="stretch")
 
     for h in core_habits:
         is_done = h in todays_logged
@@ -337,7 +337,7 @@ with tab_chat:
 
     if st.session_state.view_archive:
         col_back, col_title = st.columns([0.3, 0.7])
-        if col_back.button("⬅️ Back to Active Chat", use_container_width=True):
+        if col_back.button("⬅️ Back to Active Chat", width="stretch"):
             st.session_state.view_archive = None
             st.rerun()
         col_title.markdown("### 📜 Archived Session")
@@ -351,7 +351,7 @@ with tab_chat:
     col1.markdown("### 💬 Habit Coach")
     
     # Archive Check
-    if col2.button("➕ New Chat", use_container_width=True):
+    if col2.button("➕ New Chat", width="stretch"):
         archive_current_chat(uid, st.session_state.messages)
         st.session_state.messages = [{"role": "system", "content": SYSTEM_PROMPT}]
         save_history(uid, st.session_state.messages)
@@ -361,7 +361,7 @@ with tab_chat:
         archives = get_chat_archives(uid)
         if archives:
             for sid, name, ts in archives:
-                if st.button(f"📄 {ts} | {name}", key=f"arch_{sid}", use_container_width=True):
+                if st.button(f"📄 {ts} | {name}", key=f"arch_{sid}", width="stretch"):
                     st.session_state.view_archive = get_archived_messages(uid, sid)
                     st.rerun()
         else:
@@ -379,7 +379,7 @@ with tab_chat:
                 with st.expander("📄 View Attached Document"): st.text(attachment.strip())
             else: st.markdown(content)
 
-    with st.popover("📎", use_container_width=False):
+    with st.popover("📎", width="content"):
         uploaded_file = st.file_uploader("Attach context", type=["png", "jpg", "jpeg", "webp", "pdf", "txt", "md"])
 
     if prompt := st.chat_input("Ask about habits…"):
@@ -452,7 +452,7 @@ def show_consistency_heatmap(user_id):
         coloraxis_showscale=False,
         dragmode=False # Disable drag for better mobile scrolling
     )
-    st.plotly_chart(fig, use_container_width=False, config={'displayModeBar': False})
+    st.plotly_chart(fig, width="content", config={'displayModeBar': False})
 
 # TAB 2: ANALYTICS
 with tab_stats:
@@ -570,11 +570,11 @@ with tab_logbook:
                 data=audit_data,
                 file_name=f"HabitBot_Life_Audit_{datetime.now().strftime('%Y-%m-%d')}.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                use_container_width=True
+                width="stretch"
             )
 
     st.markdown("---")
     all_logs = get_all_habits(uid)
     if all_logs:
-        st.dataframe(all_logs, use_container_width=True)
+        st.dataframe(all_logs, width="stretch")
     else: st.write("No entries in your logbook yet.")
