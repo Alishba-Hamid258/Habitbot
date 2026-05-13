@@ -34,8 +34,15 @@ def save_history(user_id, messages):
     conn = get_connection()
     c = conn.cursor()
     c.execute("DELETE FROM chat_history WHERE user_id = ?", (user_id,))
-    c.executemany("INSERT INTO chat_history (user_id, role, content) VALUES (?, ?, ?)", 
-                  [(user_id, m["role"], m["content"]) for m in messages])
+    clean = []
+    for m in messages:
+        content = m["content"]
+        # Sanitize: if content is a list (from vision API), extract text only
+        if isinstance(content, list):
+            texts = [part["text"] for part in content if isinstance(part, dict) and part.get("type") == "text"]
+            content = " ".join(texts) if texts else str(content)
+        clean.append((user_id, m["role"], content))
+    c.executemany("INSERT INTO chat_history (user_id, role, content) VALUES (?, ?, ?)", clean)
     conn.commit()
     conn.close()
 
