@@ -1,5 +1,6 @@
 import os
 import json
+import re
 import base64
 import PyPDF2
 import io
@@ -7,6 +8,38 @@ from datetime import datetime
 import pandas as pd
 from db import get_connection
 import streamlit as st
+
+def extract_json_from_text(text: str) -> list:
+    """Robustly extract a JSON list from LLM output that may contain markdown fences or extra text."""
+    text = text.strip()
+    
+    # 1. Try parsing directly first
+    try:
+        result = json.loads(text)
+        return result if isinstance(result, list) else [result]
+    except json.JSONDecodeError:
+        pass
+    
+    # 2. Try extracting from markdown code fences (```json ... ``` or ``` ... ```)
+    fence_match = re.search(r'```(?:json)?\s*\n?(.*?)\n?\s*```', text, re.DOTALL)
+    if fence_match:
+        try:
+            result = json.loads(fence_match.group(1).strip())
+            return result if isinstance(result, list) else [result]
+        except json.JSONDecodeError:
+            pass
+    
+    # 3. Try finding the first [ ... ] block in the text
+    bracket_match = re.search(r'\[.*\]', text, re.DOTALL)
+    if bracket_match:
+        try:
+            result = json.loads(bracket_match.group(0))
+            return result if isinstance(result, list) else [result]
+        except json.JSONDecodeError:
+            pass
+    
+    # 4. Nothing worked
+    raise ValueError(f"Could not extract valid JSON from AI response: {text[:200]}")
 
 @st.cache_data(ttl=60)
 def get_habit_stats_cached(user_id):

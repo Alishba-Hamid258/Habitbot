@@ -14,7 +14,8 @@ from utils import (
     save_reflection, load_reflections, get_all_habits,
     process_uploaded_file, get_notification_js, get_permission_js, get_chime_html,
     log_focus_session, get_total_focus_time, get_heatmap_data, generate_life_audit,
-    archive_current_chat, get_chat_archives, get_archived_messages
+    archive_current_chat, get_chat_archives, get_archived_messages,
+    extract_json_from_text
 )
 
 # Cached wrappers defined here to avoid cross-file import issues on Streamlit Cloud
@@ -515,7 +516,7 @@ with tab_todo:
                 ]
                 ai_tasks_json = call_llm(msg)
                 try:
-                    new_tasks = json.loads(ai_tasks_json)
+                    new_tasks = extract_json_from_text(ai_tasks_json)
                     # Normalize AI tasks to always have all required keys
                     for task in new_tasks:
                         task.setdefault("done", False)
@@ -525,7 +526,10 @@ with tab_todo:
                     todos.extend(new_tasks)
                     save_todos(uid, todos)
                     st.rerun()
-                except: st.error("AI returned invalid task format. Please try again.")
+                except Exception as e:
+                    st.error(f"AI returned invalid task format: {e}")
+                    with st.expander("🔍 Debug: Raw AI Response"):
+                        st.code(ai_tasks_json)
 
     # Manual Add
     with st.expander("➕ Add Task Manually"):
