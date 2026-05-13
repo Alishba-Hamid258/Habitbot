@@ -171,27 +171,8 @@ if "timer_max_seconds" not in st.session_state: st.session_state.timer_max_secon
 # AUTHENTICATION SCREEN
 # ==========================================
 if st.session_state.user_id is None:
-    # If we are not in logout mode, we might be waiting for a cookie to sync
-    # 🛡️ Cookie Sync Logic (Wait max 3 reruns before showing login)
-    if not st.session_state.logout_triggered:
-        if "sync_attempts" not in st.session_state: st.session_state.sync_attempts = 0
-        st.session_state.sync_attempts += 1
-        
-        with st.status("🔒 Securing your session...", expanded=True) as status:
-            st.write("Syncing with your encrypted vault...")
-            
-            # If we've tried syncing a few times and still no user_id, show login
-            if st.session_state.sync_attempts > 2:
-                st.session_state.logout_triggered = True
-                st.rerun()
-                
-            if st.button("Force Login"):
-                st.session_state.logout_triggered = True
-                st.rerun()
-
-    # Only show the login form if we are in logout mode or no cookie was found
-    if st.session_state.logout_triggered:
-        col1, col2, col3 = st.columns([1, 2, 1])
+    # Only show the login form if no cookie was found or we are in logout mode
+    col1, col2, col3 = st.columns([1, 2, 1])
         with col2:
             st.title("🤖 HabitBot v4.0")
             st.markdown("### Secure Login & Privacy")
