@@ -160,12 +160,11 @@ with st.sidebar:
         c1.metric("Streak", f"{get_current_streak(uid)}d")
         c2.metric("Discipline", f"{get_consistency_score(uid)}%")
 
-        # Pomodoro Timer
+        # Pomodoro Timer (Fragmented for real-time updates)
         st.markdown("---")
         st.markdown("### ⏲️ Pomodoro")
         
         # Mode Selection
-        modes = {"Focus": 1500, "Short Break": 300, "Long Break": 900}
         m_cols = st.columns(3)
         if m_cols[0].button("🎯", help="Focus (25m)"): 
             st.session_state.timer_seconds = 1500
@@ -189,20 +188,30 @@ with st.sidebar:
             st.session_state.timer_seconds = adj_mins * 60
             st.session_state.timer_max_seconds = adj_mins * 60
 
-        # Display
-        mins, secs = divmod(st.session_state.timer_seconds, 60)
-        st.markdown(f"<h1 style='text-align: center; color: #FF4B4B;'>{mins:02d}:{secs:02d}</h1>", unsafe_allow_html=True)
+        # Fragment for Countdown
+        @st.fragment(run_every="1s")
+        def timer_fragment():
+            if st.session_state.timer_active and st.session_state.timer_seconds > 0:
+                st.session_state.timer_seconds -= 1
+                if st.session_state.timer_seconds == 0:
+                    st.session_state.timer_active = False
+                    st.toast("⏰ Time's up!", icon="🔔")
+
+            mins, secs = divmod(st.session_state.timer_seconds, 60)
+            st.markdown(f"<h1 style='text-align: center; color: #FF4B4B;'>{mins:02d}:{secs:02d}</h1>", unsafe_allow_html=True)
+            st.progress(max(0, min(1.0, st.session_state.timer_seconds / st.session_state.timer_max_seconds)))
+            
+            if st.session_state.timer_active:
+                if st.button("⏹ Pause Timer", use_container_width=True, key="sb_pause"): 
+                    st.session_state.timer_active = False
+                    st.rerun()
+                st.markdown(get_ticking_html(), unsafe_allow_html=True)
+            else:
+                if st.button("🚀 Start Timer", use_container_width=True, key="sb_start"): 
+                    st.session_state.timer_active = True
+                    st.rerun()
         
-        if st.session_state.timer_active:
-            if st.button("⏹ Pause Timer", use_container_width=True, key="sb_pause"): 
-                st.session_state.timer_active = False
-                st.rerun()
-            # Ticking Sound
-            st.markdown(get_ticking_html(), unsafe_allow_html=True)
-        else:
-            if st.button("🚀 Start Timer", use_container_width=True, key="sb_start"): 
-                st.session_state.timer_active = True
-                st.rerun()
+        timer_fragment()
 
         # Daily Matrix
         st.markdown("---")
