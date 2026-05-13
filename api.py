@@ -60,7 +60,11 @@ def call_llm(messages: list[dict], stream: bool = False, image_data: str = None)
                 try:
                     with httpx.Client(timeout=60.0) as client:
                         with client.stream("POST", url, json=payload, headers=headers) as r:
-                            r.raise_for_status()
+                            if r.status_code != 200:
+                                r.read()
+                                log.error("=== GROQ STREAM ERROR %s ===\n%s", r.status_code, r.text[:500])
+                                yield f"⚠️ API Error ({r.status_code}): {r.text[:300]}"
+                                return
                             for line in r.iter_lines():
                                 if line.startswith("data: "):
                                     data_str = line[6:]
@@ -73,10 +77,6 @@ def call_llm(messages: list[dict], stream: bool = False, image_data: str = None)
                                             yield content
                                     except json.JSONDecodeError:
                                         continue
-                except httpx.HTTPStatusError as exc:
-                    err = exc.response.text
-                    log.error("=== GROQ STREAM ERROR %s ===\n%s", exc.response.status_code, err)
-                    yield f"\n\n⚠️ API Error ({exc.response.status_code}): {err[:200]}"
                 except Exception as exc:
                     log.exception("=== STREAM ERROR ===")
                     yield f"\n\n⚠️ Error: {exc}"
@@ -84,16 +84,18 @@ def call_llm(messages: list[dict], stream: bool = False, image_data: str = None)
         else:
             with httpx.Client(timeout=60.0) as client:
                 r = client.post(url, json=payload, headers=headers)
-                r.raise_for_status()
+                if r.status_code != 200:
+                    log.error("=== GROQ ERROR %s ===\n%s", r.status_code, r.text[:500])
+                    return f"⚠️ API Error ({r.status_code}): {r.text[:300]}"
                 data = r.json()
                 reply = data["choices"][0]["message"]["content"]
                 log.debug("=== GROQ SUCCESS ===")
                 return reply
-    except httpx.HTTPStatusError as exc:
-        err = exc.response.text
-        log.error("=== GROQ ERROR %s ===\n%s", exc.response.status_code, err)
-        return f"API error: {err}"
     except Exception as exc:
         log.exception("=== UNEXPECTED ERROR ===")
-        return f"Error: {exc}"
+        msg = f"⚠️ Error: {exc}"
+        if stream:
+            def err_gen(): yield msg
+            return err_gen()
+        return msg
 
