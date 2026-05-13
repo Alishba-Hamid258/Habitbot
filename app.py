@@ -261,33 +261,33 @@ if st.session_state.user_id is None:
 # MAIN APP (AUTHENTICATED)
 uid = st.session_state.user_id
 
-    # Top Navigation (Tabs style)
-    pages_map = {
-        "💬 Coach": "💬 Habit Coach", 
-        "📊 Analytics": "📊 Analytics", 
-        "✅ Tasks": "✅ To-Do List", 
-        "📓 Logbook": "📓 Logbook", 
-        "📚 Library": "📚 Library"
-    }
+# Top Navigation (Tabs style)
+pages_map = {
+    "💬 Coach": "💬 Habit Coach", 
+    "📊 Analytics": "📊 Analytics", 
+    "✅ Tasks": "✅ To-Do List", 
+    "📓 Logbook": "📓 Logbook", 
+    "📚 Library": "📚 Library"
+}
+
+# Header bar with Nav and Stats
+with st.container():
+    cols = st.columns([0.6, 0.4])
+    with cols[0]:
+        choice = st.segmented_control(
+            "Navigation", 
+            options=list(pages_map.keys()), 
+            default=next(k for k, v in pages_map.items() if v == st.session_state.current_page),
+            label_visibility="collapsed",
+            key="top_nav_bar"
+        )
+        if choice:
+            st.session_state.current_page = pages_map[choice]
     
-    # Header bar with Nav and Stats
-    with st.container():
-        cols = st.columns([0.6, 0.4])
-        with cols[0]:
-            choice = st.segmented_control(
-                "Navigation", 
-                options=list(pages_map.keys()), 
-                default=next(k for k, v in pages_map.items() if v == st.session_state.current_page),
-                label_visibility="collapsed",
-                key="top_nav_bar"
-            )
-            if choice:
-                st.session_state.current_page = pages_map[choice]
-        
-        with cols[1]:
-            st.markdown(f"<p style='text-align:right; margin:0;'>🔥 {get_current_streak(uid)}d | 🎯 {get_consistency_score(uid)}%</p>", unsafe_allow_html=True)
-    
-    st.markdown("---")
+    with cols[1]:
+        st.markdown(f"<p style='text-align:right; margin:0;'>🔥 {get_current_streak(uid)}d | 🎯 {get_consistency_score(uid)}%</p>", unsafe_allow_html=True)
+
+st.markdown("---")
 
 # PAGE DISPATCHER
 page = st.session_state.current_page
