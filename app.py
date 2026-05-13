@@ -196,6 +196,7 @@ with st.sidebar:
                 if st.session_state.timer_seconds == 0:
                     st.session_state.timer_active = False
                     st.toast("⏰ Time's up!", icon="🔔")
+                    st.markdown(get_chime_html(), unsafe_allow_html=True)
 
             mins, secs = divmod(st.session_state.timer_seconds, 60)
             st.markdown(f"<h1 style='text-align: center; color: #FF4B4B;'>{mins:02d}:{secs:02d}</h1>", unsafe_allow_html=True)
@@ -205,13 +206,16 @@ with st.sidebar:
                 if st.button("⏹ Pause Timer", use_container_width=True, key="sb_pause"): 
                     st.session_state.timer_active = False
                     st.rerun()
-                st.markdown(get_ticking_html(), unsafe_allow_html=True)
             else:
                 if st.button("🚀 Start Timer", use_container_width=True, key="sb_start"): 
                     st.session_state.timer_active = True
                     st.rerun()
         
         timer_fragment()
+
+        # Continuous Ticking Sound (Outside fragment to prevent stuttering)
+        if st.session_state.timer_active:
+            st.markdown(get_ticking_html(), unsafe_allow_html=True)
 
         # Daily Matrix
         st.markdown("---")
