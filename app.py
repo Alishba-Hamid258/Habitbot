@@ -401,7 +401,8 @@ with tab_chat:
     for m in st.session_state.messages[1:]:
         avatar = "🤖" if m["role"] == "assistant" else "👤"
         with st.chat_message(m["role"], avatar=avatar):
-            content = m["content"]
+            from utils import _safe_content
+            content = _safe_content(m.get("content", ""))
             if "[FILE ATTACHMENT]:" in content:
                 main_text, attachment = content.split("[FILE ATTACHMENT]:", 1)
                 st.markdown(main_text.strip())
