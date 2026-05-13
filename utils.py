@@ -34,15 +34,8 @@ def save_history(user_id, messages):
     conn = get_connection()
     c = conn.cursor()
     c.execute("DELETE FROM chat_history WHERE user_id = ?", (user_id,))
-    clean = []
-    for m in messages:
-        content = m["content"]
-        # Sanitize: if content is a list (from vision API), extract text only
-        if isinstance(content, list):
-            texts = [part["text"] for part in content if isinstance(part, dict) and part.get("type") == "text"]
-            content = " ".join(texts) if texts else str(content)
-        clean.append((user_id, m["role"], content))
-    c.executemany("INSERT INTO chat_history (user_id, role, content) VALUES (?, ?, ?)", clean)
+    c.executemany("INSERT INTO chat_history (user_id, role, content) VALUES (?, ?, ?)",
+                  [(user_id, m["role"], _safe_content(m["content"])) for m in messages])
     conn.commit()
     conn.close()
 
@@ -54,6 +47,13 @@ def load_history(user_id):
     conn.close()
     return [{"role": row[0], "content": row[1]} for row in rows]
 
+def _safe_content(content):
+    """Convert message content to a plain string (handles vision API list format)."""
+    if isinstance(content, list):
+        texts = [part["text"] for part in content if isinstance(part, dict) and part.get("type") == "text"]
+        return " ".join(texts) if texts else str(content)
+    return content if isinstance(content, str) else str(content)
+
 def archive_current_chat(user_id, messages):
     if len(messages) <= 1: return
     conn = get_connection()
@@ -62,11 +62,12 @@ def archive_current_chat(user_id, messages):
     session_name = "Session"
     for m in messages:
         if m["role"] == "user":
-            session_name = (m["content"][:30] + "...") if len(m["content"]) > 30 else m["content"]
+            text = _safe_content(m["content"])
+            session_name = (text[:30] + "...") if len(text) > 30 else text
             break
     for m in messages:
         c.execute("INSERT INTO chat_archives (user_id, session_id, session_name, role, content) VALUES (?, ?, ?, ?, ?)",
-                  (user_id, session_id, session_name, m["role"], m["content"]))
+                  (user_id, session_id, session_name, m["role"], _safe_content(m["content"])))
     conn.commit()
     conn.close()
 
