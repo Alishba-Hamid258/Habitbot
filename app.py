@@ -19,12 +19,13 @@ from utils import (
 )
 
 def get_chime_html():
-    chime_url = "https://actions.google.com/sounds/v1/alarms/beep_short.ogg"
-    return f"""<div style="display:none;"><audio autoplay><source src="{chime_url}" type="audio/ogg"></audio></div>"""
+    return """<div style="display:none;"><script>
+        var audio = new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg");
+        audio.play().catch(e => console.log('Audio blocked:', e));
+    </script></div>"""
 
 def get_ticking_html():
-    tick_url = "https://www.soundjay.com/clock/clock-ticking-2.mp3"
-    return f"""<div style="display:none;"><audio autoplay loop><source src="{tick_url}" type="audio/mpeg"></audio></div>"""
+    return "" # Removed per user request
 
 def extract_json_from_text(text):
     """Robustly extract a JSON list from LLM output that may contain markdown fences or extra text."""
@@ -213,9 +214,7 @@ with st.sidebar:
         
         timer_fragment()
 
-        # Continuous Ticking Sound (Outside fragment to prevent stuttering)
-        if st.session_state.timer_active:
-            st.markdown(get_ticking_html(), unsafe_allow_html=True)
+        # (Ticking sound removed per user request)
 
         # Daily Matrix
         st.markdown("---")
