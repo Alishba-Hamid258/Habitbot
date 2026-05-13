@@ -183,7 +183,7 @@ with st.sidebar:
             st.rerun()
 
         # Custom Adjustment
-        adj_mins = st.number_input("Minutes", value=st.session_state.timer_seconds // 60, min_value=1, max_value=120, step=1, key="sb_adj_mins")
+        adj_mins = st.number_input("Minutes", value=max(1, st.session_state.timer_seconds // 60), min_value=1, max_value=120, step=1, key="sb_adj_mins")
         if adj_mins * 60 != st.session_state.timer_seconds and not st.session_state.timer_active:
             st.session_state.timer_seconds = adj_mins * 60
             st.session_state.timer_max_seconds = adj_mins * 60
