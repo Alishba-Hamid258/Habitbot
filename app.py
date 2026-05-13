@@ -15,28 +15,9 @@ from utils import (
     save_reflection, load_reflections, get_all_habits,
     process_uploaded_file, get_notification_js, get_permission_js,
     log_focus_session, get_total_focus_time, get_heatmap_data, generate_life_audit,
-    archive_current_chat, get_chat_archives, get_archived_messages, delete_chat_archive
+    archive_current_chat, get_chat_archives, get_archived_messages, delete_chat_archive,
+    get_chime_html, get_ticking_html
 )
-
-def get_chime_html():
-    return """<div style="display:none;"><script>
-        if (window.chimeAudio) {
-            window.chimeAudio.play().catch(e => console.log('Audio blocked:', e));
-        } else {
-            var audio = new Audio("https://www.soundjay.com/buttons/beep-07a.mp3");
-            audio.play().catch(e => console.log('Audio blocked:', e));
-        }
-    </script></div>"""
-
-def get_prime_audio_js():
-    return """<script>
-        window.primeAudio = function() {
-            if (!window.chimeAudio) {
-                window.chimeAudio = new Audio("https://www.soundjay.com/buttons/beep-07a.mp3");
-                window.chimeAudio.load();
-            }
-        }
-    </script>"""
 
 def extract_json_from_text(text):
     """Robustly extract a JSON list from LLM output that may contain markdown fences or extra text."""
@@ -177,6 +158,11 @@ with st.sidebar:
         st.markdown("---")
         st.markdown("### ⏲️ Pomodoro")
         
+        # Audio Settings
+        with st.expander("🔊 Audio Settings"):
+            if st.button("🔔 Test Chime", use_container_width=True):
+                st.markdown(get_chime_html(), unsafe_allow_html=True)
+                st.toast("Chime triggered!", icon="🎵")
         # Mode Selection
         m_cols = st.columns(3)
         if m_cols[0].button("🎯", help="Focus (25m)"): 
@@ -530,86 +516,57 @@ elif page == "📓 Logbook":
                 file_name=f"HabitBot_Life_Audit_{datetime.now().strftime('%Y-%m-%d')}.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 width="stretch"
-            )
-
-    st.markdown("---")
-    all_logs = get_all_habits(uid)
-    if all_logs:
-        st.dataframe(all_logs, width="stretch")
-    else: st.write("No entries in your logbook yet.")
-
-# PAGE: LIBRARY
-elif page == "📚 Library":
+  elif page == "📚 Library":
     st.subheader("📚 Mastery Library")
     st.caption("Curated resources to sharpen your habits and mindset.")
 
-    lib_tab1, lib_tab2 = st.tabs(["📖 Essential Books", "🎥 YouTube Resources"])
+    lib_tab1, lib_tab2, lib_tab3 = st.tabs(["📖 Essential Books", "🎥 Mastery Theater", "🎬 Custom Player"])
 
     with lib_tab1:
         st.markdown("### 📖 The Habit Blueprint")
-        
         books = [
-            {
-                "title": "Atomic Habits",
-                "author": "James Clear",
-                "desc": "An easy and proven way to build good habits and break bad ones.",
-                "link": "https://jamesclear.com/atomic-habits"
-            },
-            {
-                "title": "Tiny Habits",
-                "author": "BJ Fogg, PhD",
-                "desc": "The small changes that change everything through simple behavioral design.",
-                "link": "https://www.tinyhabits.com/book"
-            },
-            {
-                "title": "Deep Work",
-                "author": "Cal Newport",
-                "desc": "Rules for focused success in a distracted world.",
-                "link": "https://www.calnewport.com/books/deep-work/"
-            },
-            {
-                "title": "The Power of Habit",
-                "author": "Charles Duhigg",
-                "desc": "Understanding how habits work in our lives, companies, and societies.",
-                "link": "https://www.charlesduhigg.com/the-power-of-habit"
-            }
+            {"title": "Atomic Habits", "author": "James Clear", "desc": "An easy and proven way to build good habits.", "link": "https://jamesclear.com/atomic-habits", "icon": "⚛️"},
+            {"title": "Tiny Habits", "author": "BJ Fogg, PhD", "desc": "The small changes that change everything.", "link": "https://www.tinyhabits.com/book", "icon": "🌱"},
+            {"title": "Deep Work", "author": "Cal Newport", "desc": "Rules for focused success in a distracted world.", "link": "https://www.calnewport.com/books/deep-work/", "icon": "🧠"}
         ]
-
         for b in books:
             with st.container(border=True):
-                col1, col2 = st.columns([0.7, 0.3])
-                col1.markdown(f"#### {b['title']}")
+                col1, col2 = st.columns([0.8, 0.2])
+                col1.markdown(f"#### {b['icon']} {b['title']}")
                 col1.caption(f"by {b['author']}")
                 col1.write(b['desc'])
-                if col2.button("Read More", key=f"book_{b['title']}"):
-                    st.link_button("Go to Site", b['link'])
+                col2.link_button("Details", b['link'], use_container_width=True)
 
     with lib_tab2:
-        st.markdown("### 🎥 Watch & Learn")
-        
+        st.markdown("### 🎥 Mastery Theater")
+        st.caption("Curated high-performance habit videos.")
         videos = [
-            {
-                "title": "The Best Way to Build a Habit",
-                "channel": "Productivity Game",
-                "url": "https://www.youtube.com/watch?v=75d_29QRIh0"
-            },
-            {
-                "title": "How to Build a Habit in 5 Steps",
-                "channel": "Better Than Yesterday",
-                "url": "https://www.youtube.com/watch?v=GNS7Sj_0C7M"
-            },
-            {
-                "title": "The Science of Habits",
-                "channel": "AsapSCIENCE",
-                "url": "https://www.youtube.com/watch?v=75d_29QRIh0"
-            }
+            {"title": "Atomic Habits Summary", "url": "https://www.youtube.com/watch?v=PZ7lDrwYdZc"},
+            {"title": "Deep Work Masterclass", "url": "https://www.youtube.com/watch?v=mDbaB7u1H3k"},
+            {"title": "The Science of Consistency", "url": "https://www.youtube.com/watch?v=TAs7I0Taqf4"},
+            {"title": "Mindset of a Champion", "url": "https://www.youtube.com/watch?v=mID_YpWCHwQ"}
         ]
+        # 2-column grid for videos
+        for i in range(0, len(videos), 2):
+            cols = st.columns(2)
+            for j in range(2):
+                if i + j < len(videos):
+                    v = videos[i+j]
+                    with cols[j].container(border=True):
+                        st.markdown(f"##### {v['title']}")
+                        st.video(v['url'])
 
-        for v in videos:
-            with st.container(border=True):
-                st.markdown(f"#### {v['title']}")
-                st.caption(f"Channel: {v['channel']}")
-                st.video(v['url'])
+    with lib_tab3:
+        st.markdown("### 🎬 Custom Player")
+        st.caption("Paste any YouTube URL below to watch it directly in HabitBot.")
+        custom_url = st.text_input("YouTube URL", placeholder="https://www.youtube.com/watch?v=...", key="lib_custom_player")
+        if custom_url:
+            if "youtube.com" in custom_url or "youtu.be" in custom_url:
+                with st.container(border=True):
+                    st.video(custom_url)
+                    st.success("Playing your custom resource!")
+            else:
+                st.warning("Please enter a valid YouTube link.")
 # FINAL PWA CSS & META
 pwa_html = """
 <style>
