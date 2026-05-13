@@ -57,21 +57,29 @@ def call_llm(messages: list[dict], stream: bool = False, image_data: str = None)
     try:
         if stream:
             def stream_generator():
-                with httpx.Client(timeout=60.0) as client:
-                    with client.stream("POST", url, json=payload, headers=headers) as r:
-                        r.raise_for_status()
-                        for line in r.iter_lines():
-                            if line.startswith("data: "):
-                                data_str = line[6:]
-                                if data_str == "[DONE]":
-                                    break
-                                try:
-                                    data = json.loads(data_str)
-                                    content = data["choices"][0]["delta"].get("content", "")
-                                    if content:
-                                        yield content
-                                except json.JSONDecodeError:
-                                    continue
+                try:
+                    with httpx.Client(timeout=60.0) as client:
+                        with client.stream("POST", url, json=payload, headers=headers) as r:
+                            r.raise_for_status()
+                            for line in r.iter_lines():
+                                if line.startswith("data: "):
+                                    data_str = line[6:]
+                                    if data_str == "[DONE]":
+                                        break
+                                    try:
+                                        data = json.loads(data_str)
+                                        content = data["choices"][0]["delta"].get("content", "")
+                                        if content:
+                                            yield content
+                                    except json.JSONDecodeError:
+                                        continue
+                except httpx.HTTPStatusError as exc:
+                    err = exc.response.text
+                    log.error("=== GROQ STREAM ERROR %s ===\n%s", exc.response.status_code, err)
+                    yield f"\n\n⚠️ API Error ({exc.response.status_code}): {err[:200]}"
+                except Exception as exc:
+                    log.exception("=== STREAM ERROR ===")
+                    yield f"\n\n⚠️ Error: {exc}"
             return stream_generator()
         else:
             with httpx.Client(timeout=60.0) as client:
@@ -84,16 +92,8 @@ def call_llm(messages: list[dict], stream: bool = False, image_data: str = None)
     except httpx.HTTPStatusError as exc:
         err = exc.response.text
         log.error("=== GROQ ERROR %s ===\n%s", exc.response.status_code, err)
-        msg = f"API error: {err}"
-        if stream:
-            def err_gen(): yield msg
-            return err_gen()
-        return msg
+        return f"API error: {err}"
     except Exception as exc:
         log.exception("=== UNEXPECTED ERROR ===")
-        msg = f"Error: {exc}"
-        if stream:
-            def err_gen(): yield msg
-            return err_gen()
-        return msg
+        return f"Error: {exc}"
 
