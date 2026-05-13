@@ -70,24 +70,43 @@ def load_history(user_id):
     return [{"role": row[0], "content": row[1]} for row in rows]
 
 def archive_current_chat(user_id, messages):
-    if len(messages) <= 1: return
+    if not messages or len(messages) <= 1: return
     conn = get_connection()
     c = conn.cursor()
     session_id = datetime.now().strftime("%Y%m%d%H%M%S")
     session_name = "Session"
+    
+    # Extract session name from first user message
     for m in messages:
         if m.get("role") == "user":
             text = _safe_content(m.get("content", ""))
             session_name = (text[:30] + "...") if len(text) > 30 else text
             break
-    for m in messages:
-        # Ensure role and content are strings
-        role = str(m.get("role", "assistant"))
-        content = _safe_content(m.get("content", ""))
-        c.execute("INSERT INTO chat_archives (user_id, session_id, session_name, role, content) VALUES (?, ?, ?, ?, ?)",
-                  (user_id, session_id, str(session_name), role, content))
-    conn.commit()
-    conn.close()
+            
+    try:
+        for m in messages:
+            role = str(m.get("role", "assistant"))
+            content = _safe_content(m.get("content", ""))
+            
+            # Explicitly cast EVERY parameter to a safe type for SQLite
+            safe_uid = int(user_id) if str(user_id).isdigit() else str(user_id)
+            safe_sid = str(session_id)
+            safe_sname = str(session_name)
+            safe_role = str(role)
+            safe_content = str(content)
+            
+            c.execute(
+                "INSERT INTO chat_archives (user_id, session_id, session_name, role, content) VALUES (?, ?, ?, ?, ?)",
+                (safe_uid, safe_sid, safe_sname, safe_role, safe_content)
+            )
+        conn.commit()
+    except Exception as e:
+        import streamlit as st
+        st.error(f"Archive Error: {e}")
+        # Log details to help debugging
+        st.write(f"DEBUG - uid type: {type(user_id)}, sname type: {type(session_name)}, content type: {type(content)}")
+    finally:
+        conn.close()
 
 def get_chat_archives(user_id):
     conn = get_connection()
