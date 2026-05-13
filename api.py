@@ -30,10 +30,12 @@ def call_llm(messages: list[dict], stream: bool = False, image_data: str = None)
     if image_data:
         model = "meta-llama/llama-4-scout-17b-16e-instruct"
         stream = False  # Vision requests don't reliably support streaming
+        # Deep copy to avoid mutating the caller's message objects
+        import copy
+        messages = copy.deepcopy(messages)
         # Ensure all messages have plain text content (sanitize older messages)
         for msg in messages:
             if isinstance(msg.get("content"), list):
-                # Extract just the text from any previously formatted multimodal messages
                 texts = [c["text"] for c in msg["content"] if c.get("type") == "text"]
                 msg["content"] = " ".join(texts) if texts else ""
         # Reformat the last user message for multimodal input
