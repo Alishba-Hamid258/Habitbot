@@ -124,26 +124,59 @@ def show_consistency_heatmap(user_id):
     fig.update_layout(height=250, margin=dict(l=0, r=0, t=10, b=10), coloraxis_showscale=False)
     st.plotly_chart(fig, use_container_width=True)
 
-# SIDEBAR
+# SIDEBAR (Status & Tools)
 with st.sidebar:
     st.title("🤖 HabitBot")
+    
     if st.session_state.user_id:
         uid = st.session_state.user_id
         cb = get_callbacks(uid)
-        st.markdown("### 🧭 Navigation")
-        nav_options = {"💬 Habit Coach": "chat", "📊 Analytics": "stats", "✅ To-Do List": "todo", "📓 Logbook": "logbook", "📚 Library": "library"}
-        st.session_state.current_page = st.radio("Go to:", list(nav_options.keys()), index=list(nav_options.keys()).index(st.session_state.current_page))
+        
+        # Profile & Logout
+        with st.container(border=True):
+            c1, c2 = st.columns([0.3, 0.7])
+            c1.markdown("### 👤")
+            c2.markdown(f"**User: {uid}**")
+            if st.button("Logout", use_container_width=True):
+                st.session_state.user_id = None
+                st.session_state.logout_triggered = True
+                cookie_manager.delete("habitbot_v4_uid")
+                st.query_params.clear()
+                st.rerun()
+
         st.markdown("---")
-        st.metric("Streak", f"{get_current_streak(uid)}d")
-        st.metric("Discipline", f"{get_consistency_score(uid)}%")
-        if st.button("Logout", use_container_width=True):
-            st.session_state.user_id = None
-            st.session_state.logout_triggered = True
-            cookie_manager.delete("habitbot_v4_uid")
-            st.query_params.clear()
-            st.rerun()
+        
+        # Stats
+        st.markdown("### 🔥 Mastery")
+        c1, c2 = st.columns(2)
+        c1.metric("Streak", f"{get_current_streak(uid)}d")
+        c2.metric("Discipline", f"{get_consistency_score(uid)}%")
+
+        # Focus Timer
+        st.markdown("---")
+        st.markdown("### ⏲️ Focus Timer")
+        ts = st.session_state.get("timer_seconds", 1500)
+        mins, secs = divmod(ts, 60)
+        st.markdown(f"<h1 style='text-align: center;'>{mins:02d}:{secs:02d}</h1>", unsafe_allow_html=True)
+        if st.session_state.timer_active:
+            if st.button("⏹ Pause", use_container_width=True, key="sb_pause"): 
+                st.session_state.timer_active = False
+                st.rerun()
+        else:
+            if st.button("🚀 Start", use_container_width=True, key="sb_start"): 
+                st.session_state.timer_active = True
+                st.rerun()
+
+        # Daily Matrix
+        st.markdown("---")
+        st.markdown("### 🛡️ Daily Matrix")
+        core = load_core_habits(uid)
+        logged = get_todays_logged_habits(uid)
+        st.button("☀️ Unfreeze" if "❄️ Freeze Day" in logged else "❄️ Freeze", on_click=cb["toggle_freeze"], use_container_width=True, key="sb_freeze_btn")
+        for h in core:
+            st.checkbox(h, value=h in logged, key=f"sb_chk_{h}", on_change=cb["toggle_daily"], args=(h,))
     else:
-        st.info("👋 Please log in.")
+        st.info("👋 Welcome! Please log in.")
 # (End of setup)
 
 # ==========================================
