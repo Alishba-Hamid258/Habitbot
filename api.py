@@ -28,7 +28,7 @@ def call_llm(messages: list[dict], stream: bool = False, image_data: str = None)
     # DYNAMIC MODEL SWITCHING & MULTIMODAL PAYLOAD
     model = Config.MODEL
     if image_data:
-        model = "llama-3.2-11b-vision-preview"
+        model = "meta-llama/llama-4-scout-17b-16e-instruct"
         # Reformat the last user message for multimodal input
         if messages and messages[-1]["role"] == "user":
             user_text = messages[-1]["content"]
