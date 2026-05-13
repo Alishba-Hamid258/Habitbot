@@ -13,7 +13,7 @@ def get_habit_stats_cached(user_id):
     return get_habit_stats(user_id)
 
 @st.cache_data(ttl=300)
-def get_heatmap_data_cached(user_id):
+def get_habit_heatmap_v2(user_id):
     return get_heatmap_data(user_id)
 
 def is_on_topic(prompt: str, history: list = None) -> bool:

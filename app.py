@@ -14,7 +14,8 @@ from utils import (
     save_reflection, load_reflections, get_all_habits,
     process_uploaded_file, get_notification_js, get_permission_js, get_chime_html,
     log_focus_session, get_total_focus_time, get_heatmap_data, generate_life_audit,
-    archive_current_chat, get_chat_archives, get_archived_messages
+    archive_current_chat, get_chat_archives, get_archived_messages,
+    get_habit_stats_cached, get_habit_heatmap_v2
 )
 from auth import create_user, verify_user
 from db import init_db
@@ -124,22 +125,30 @@ if st.session_state.user_id is None and not st.session_state.logout_triggered:
         st.rerun()
 
 if "last_input" not in st.session_state: st.session_state.last_input = ""
+if "timer_mode" not in st.session_state: st.session_state.timer_mode = "🍅 Focus"
+if "timer_active" not in st.session_state: st.session_state.timer_active = False
+if "timer_seconds" not in st.session_state: st.session_state.timer_seconds = 1500 # Default 25 min
+if "timer_max_seconds" not in st.session_state: st.session_state.timer_max_seconds = 1500
 
 # ==========================================
 # AUTHENTICATION SCREEN
 # ==========================================
 if st.session_state.user_id is None:
     # If we are not in logout mode, we might be waiting for a cookie to sync
+    # 🛡️ Cookie Sync Logic (Wait max 3 reruns before showing login)
     if not st.session_state.logout_triggered:
-        # Check if the cookie manager has had a chance to run
-        # We'll show a clean loading state instead of the login form
+        if "sync_attempts" not in st.session_state: st.session_state.sync_attempts = 0
+        st.session_state.sync_attempts += 1
+        
         with st.status("🔒 Securing your session...", expanded=True) as status:
             st.write("Syncing with your encrypted vault...")
-            # We don't use st.stop() because the cookie manager needs to finish rendering
-            # Instead, we just don't show the login form yet.
             
-            # If the user is staring at this for too long, they can force login
-            if st.button("Manual Login"):
+            # If we've tried syncing a few times and still no user_id, show login
+            if st.session_state.sync_attempts > 2:
+                st.session_state.logout_triggered = True
+                st.rerun()
+                
+            if st.button("Force Login"):
                 st.session_state.logout_triggered = True
                 st.rerun()
 
@@ -241,11 +250,6 @@ with st.sidebar:
         "☕ Short Break": s_min * 60,
         "🛋️ Long Break": l_min * 60
     }
-
-    if "timer_mode" not in st.session_state: st.session_state.timer_mode = "🍅 Focus"
-    if "timer_active" not in st.session_state: st.session_state.timer_active = False
-    if "timer_seconds" not in st.session_state: st.session_state.timer_seconds = POMODORO_MODES["🍅 Focus"]
-    if "timer_max_seconds" not in st.session_state: st.session_state.timer_max_seconds = POMODORO_MODES["🍅 Focus"]
 
     @st.fragment(run_every="1s")
     def smooth_timer():
@@ -402,7 +406,8 @@ with tab_chat:
 
 # HELPER FOR HEATMAP
 def show_consistency_heatmap(user_id):
-    df = get_heatmap_data_cached(user_id)
+    import utils
+    df = utils.get_habit_heatmap_v2(user_id)
     if df.empty:
         st.write("No data available for heatmap.")
         return
@@ -464,7 +469,8 @@ with tab_stats:
             st.markdown(report)
     st.markdown("---")
 
-    daily, weekly, monthly = get_habit_stats(uid)
+    import utils
+    daily, weekly, monthly = utils.get_habit_stats_cached(uid)
     total_focus = get_total_focus_time(uid, "today")
     st.info(f"🧠 **Deep Work Today**: {total_focus} minutes logged")
     
