@@ -435,7 +435,12 @@ with tab_chat:
                 dynamic_messages = st.session_state.messages.copy()
                 dynamic_messages[0] = {"role": "system", "content": f"{SYSTEM_PROMPT}\n\nUSER'S CURRENT PROGRESS:\n{habit_summary}"}
                 with st.chat_message("assistant", avatar="🤖"):
-                    reply = st.write_stream(call_llm(dynamic_messages, stream=True, image_data=image_data))
+                    llm_response = call_llm(dynamic_messages, stream=True, image_data=image_data)
+                    if isinstance(llm_response, str):
+                        st.markdown(llm_response)
+                        reply = llm_response
+                    else:
+                        reply = st.write_stream(llm_response)
                 st.session_state.messages.append({"role": "assistant", "content": reply})
                 save_history(uid, st.session_state.messages)
                 st.session_state.last_input = ""
