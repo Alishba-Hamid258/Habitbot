@@ -360,7 +360,7 @@ with st.sidebar:
             col2.button("🗑️", key=f"del_core_{i}", on_click=delete_core_habit_cb, args=(i,))
 
 # MAIN TABS
-tab_chat, tab_stats, tab_todo, tab_logbook = st.tabs(["💬 Habit Coach", "📊 Analytics", "✅ To-Do List", "📓 Logbook"])
+tab_chat, tab_stats, tab_todo, tab_logbook, tab_library = st.tabs(["💬 Habit Coach", "📊 Analytics", "✅ To-Do List", "📓 Logbook", "📚 Library"])
 
 # INIT MESSAGES
 if "messages" not in st.session_state:
@@ -637,3 +637,76 @@ with tab_logbook:
     if all_logs:
         st.dataframe(all_logs, width="stretch")
     else: st.write("No entries in your logbook yet.")
+
+# TAB 5: LIBRARY
+with tab_library:
+    st.subheader("📚 Mastery Library")
+    st.caption("Curated resources to sharpen your habits and mindset.")
+
+    lib_tab1, lib_tab2 = st.tabs(["📖 Essential Books", "🎥 YouTube Resources"])
+
+    with lib_tab1:
+        st.markdown("### 📖 The Habit Blueprint")
+        
+        books = [
+            {
+                "title": "Atomic Habits",
+                "author": "James Clear",
+                "desc": "An easy and proven way to build good habits and break bad ones.",
+                "link": "https://jamesclear.com/atomic-habits"
+            },
+            {
+                "title": "Tiny Habits",
+                "author": "BJ Fogg, PhD",
+                "desc": "The small changes that change everything through simple behavioral design.",
+                "link": "https://www.tinyhabits.com/book"
+            },
+            {
+                "title": "Deep Work",
+                "author": "Cal Newport",
+                "desc": "Rules for focused success in a distracted world.",
+                "link": "https://www.calnewport.com/books/deep-work/"
+            },
+            {
+                "title": "The Power of Habit",
+                "author": "Charles Duhigg",
+                "desc": "Understanding how habits work in our lives, companies, and societies.",
+                "link": "https://www.charlesduhigg.com/the-power-of-habit"
+            }
+        ]
+
+        for b in books:
+            with st.container(border=True):
+                col1, col2 = st.columns([0.7, 0.3])
+                col1.markdown(f"#### {b['title']}")
+                col1.caption(f"by {b['author']}")
+                col1.write(b['desc'])
+                if col2.button("Read More", key=f"book_{b['title']}"):
+                    st.link_button("Go to Site", b['link'])
+
+    with lib_tab2:
+        st.markdown("### 🎥 Watch & Learn")
+        
+        videos = [
+            {
+                "title": "The Best Way to Build a Habit",
+                "channel": "Productivity Game",
+                "url": "https://www.youtube.com/watch?v=75d_29QRIh0"
+            },
+            {
+                "title": "How to Build a Habit in 5 Steps",
+                "channel": "Better Than Yesterday",
+                "url": "https://www.youtube.com/watch?v=GNS7Sj_0C7M"
+            },
+            {
+                "title": "The Science of Habits",
+                "channel": "AsapSCIENCE",
+                "url": "https://www.youtube.com/watch?v=75d_29QRIh0"
+            }
+        ]
+
+        for v in videos:
+            with st.container(border=True):
+                st.markdown(f"#### {v['title']}")
+                st.caption(f"Channel: {v['channel']}")
+                st.video(v['url'])
