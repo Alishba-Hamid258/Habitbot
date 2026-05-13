@@ -78,6 +78,7 @@ if "timer_mode" not in st.session_state: st.session_state.timer_mode = "🍅 Foc
 if "timer_active" not in st.session_state: st.session_state.timer_active = False
 if "timer_seconds" not in st.session_state: st.session_state.timer_seconds = 1500
 if "timer_max_seconds" not in st.session_state: st.session_state.timer_max_seconds = 1500
+if "lib_custom_url" not in st.session_state: st.session_state.lib_custom_url = ""
 
 # PERSISTENT LOGIN RECOVERY (Simplified)
 if st.session_state.user_id is None and not st.session_state.logout_triggered:
@@ -562,11 +563,14 @@ elif page == "📚 Library":
     with lib_tab3:
         st.markdown("### 🎬 Custom Player")
         st.caption("Paste any YouTube URL below to watch it directly in HabitBot.")
-        custom_url = st.text_input("YouTube URL", placeholder="https://www.youtube.com/watch?v=...", key="lib_custom_player")
-        if custom_url:
-            if "youtube.com" in custom_url or "youtu.be" in custom_url:
+        # Use value from session_state and update it on change
+        custom_url = st.text_input("YouTube URL", value=st.session_state.lib_custom_url, placeholder="https://www.youtube.com/watch?v=...", key="lib_custom_player_input")
+        st.session_state.lib_custom_url = custom_url
+        
+        if st.session_state.lib_custom_url:
+            if "youtube.com" in st.session_state.lib_custom_url or "youtu.be" in st.session_state.lib_custom_url:
                 with st.container(border=True):
-                    st.video(custom_url)
+                    st.video(st.session_state.lib_custom_url)
                     st.success("Playing your custom resource!")
             else:
                 st.warning("Please enter a valid YouTube link.")
