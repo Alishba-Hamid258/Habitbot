@@ -145,7 +145,7 @@ pwa_html = """
 st.markdown(pwa_html, unsafe_allow_html=True)
 
 # COOKIE MANAGER INIT
-cookie_manager = stx.CookieManager()
+cookie_manager = stx.CookieManager(key="habitbot_cookie_manager")
 
 # SESSION STATE INIT
 if "user_id" not in st.session_state:
@@ -153,29 +153,24 @@ if "user_id" not in st.session_state:
 if "logout_triggered" not in st.session_state:
     st.session_state.logout_triggered = False
 
-# PERSISTENT LOGIN RECOVERY (Only if we haven't manually logged out)
+# PERSISTENT LOGIN RECOVERY
 if st.session_state.user_id is None and not st.session_state.logout_triggered:
-    # 🛡️ Persistent Cookie Sync
     if "sync_attempts" not in st.session_state: st.session_state.sync_attempts = 0
     
-    # Try to read the cookie
+    # Render the manager to ensure it's active in the browser
+    # We use a key to keep the component state stable
     try:
-        saved_uid = cookie_manager.get(cookie="habitbot_user_id")
-    except:
-        saved_uid = None
-
-    if saved_uid:
-        try:
+        saved_uid = cookie_manager.get(cookie="habitbot_v4_uid")
+        if saved_uid:
             st.session_state.user_id = int(saved_uid)
-            st.session_state.sync_attempts = 0 # Success!
+            st.session_state.sync_attempts = 0
             st.rerun()
-        except:
-            pass # Bad cookie data
-            
-    elif st.session_state.sync_attempts < 10:
+    except Exception as e:
+        pass # Handle cases where cookie manager isn't ready
+
+    if st.session_state.sync_attempts < 10:
         st.session_state.sync_attempts += 1
-        # Show a tiny, subtle indicator so we know it's working
-        st.caption("🔄 Resuming your session...")
+        st.caption("🔄 Reconnecting...")
         import time
         time.sleep(0.1)
         st.rerun()
@@ -210,7 +205,7 @@ if st.session_state.user_id is None:
                         # Save to cookie for 30 days
                         import datetime as dt
                         expiry = dt.datetime.now() + dt.timedelta(days=30)
-                        cookie_manager.set("habitbot_user_id", str(uid), expires_at=expiry)
+                        cookie_manager.set("habitbot_v4_uid", str(uid), expires_at=expiry)
                         st.rerun()
                     else:
                         st.error("Invalid username or password.")
