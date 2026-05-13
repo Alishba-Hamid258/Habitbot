@@ -1,3 +1,4 @@
+# utils.py — v4.1 (added extract_json_from_text)
 import os
 import json
 import re
