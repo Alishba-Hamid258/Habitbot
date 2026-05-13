@@ -16,7 +16,7 @@ from utils import (
     process_uploaded_file, get_notification_js, get_permission_js,
     log_focus_session, get_total_focus_time, get_heatmap_data, generate_life_audit,
     archive_current_chat, get_chat_archives, get_archived_messages, delete_chat_archive,
-    get_chime_html, get_ticking_html
+    get_chime_html, get_ticking_html, get_prime_audio_js
 )
 
 def extract_json_from_text(text):

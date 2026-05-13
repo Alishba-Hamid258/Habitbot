@@ -467,5 +467,14 @@ def get_chime_html():
     return f"""<div style="display:none;"><audio id="chime-audio" src="data:audio/wav;base64,{beep_b64}"></audio><script>document.getElementById('chime-audio').play().catch(e => console.log('Audio play failed:', e));</script></div>"""
 
 def get_ticking_html():
-    tick_url = "https://www.soundjay.com/clock/clock-ticking-2.mp3"
-    return f"""<div style="display:none;"><audio autoplay loop><source src="{tick_url}" type="audio/mpeg"></audio></div>"""
+    # Return empty string to disable ticking as requested
+    return ""
+
+def get_prime_audio_js():
+    return """<script>
+        window.primeAudio = function() {
+            // Triggered on first user interaction to unlock audio context
+            const a = new Audio("data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=");
+            a.play().catch(() => {});
+        }
+    </script>"""
