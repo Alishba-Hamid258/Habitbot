@@ -155,20 +155,29 @@ if "logout_triggered" not in st.session_state:
 
 # PERSISTENT LOGIN RECOVERY
 if st.session_state.user_id is None and not st.session_state.logout_triggered:
+    # 1. Try URL Query Params first (Fastest/Most Reliable for Refreshes)
+    if "uid" in st.query_params:
+        try:
+            q_uid = int(st.query_params["uid"])
+            st.session_state.user_id = q_uid
+            st.session_state.sync_attempts = 0
+            st.rerun()
+        except:
+            pass
+
+    # 2. Fallback to Cookie Sync (Slower)
     if "sync_attempts" not in st.session_state: st.session_state.sync_attempts = 0
-    
-    # Render the manager to ensure it's active in the browser
-    # We use a key to keep the component state stable
     try:
         saved_uid = cookie_manager.get(cookie="habitbot_v4_uid")
         if saved_uid:
             st.session_state.user_id = int(saved_uid)
+            st.query_params["uid"] = str(saved_uid) # Sync back to URL for next refresh
             st.session_state.sync_attempts = 0
             st.rerun()
-    except Exception as e:
-        pass # Handle cases where cookie manager isn't ready
+    except:
+        pass
 
-    if st.session_state.sync_attempts < 10:
+    if st.session_state.sync_attempts < 5:
         st.session_state.sync_attempts += 1
         st.caption("🔄 Reconnecting...")
         import time
@@ -206,6 +215,7 @@ if st.session_state.user_id is None:
                         import datetime as dt
                         expiry = dt.datetime.now() + dt.timedelta(days=30)
                         cookie_manager.set("habitbot_v4_uid", str(uid), expires_at=expiry)
+                        st.query_params["uid"] = str(uid) # Add to URL for instant recovery on refresh
                         st.rerun()
                     else:
                         st.error("Invalid username or password.")
@@ -266,7 +276,8 @@ with st.sidebar:
     if st.button("Logout", type="secondary", width="stretch"):
         st.session_state.user_id = None
         st.session_state.logout_triggered = True # Tell the app we want to stay out
-        cookie_manager.delete("habitbot_user_id")
+        cookie_manager.delete("habitbot_v4_uid")
+        st.query_params.clear()
         st.rerun()
 
     st.markdown("---")
