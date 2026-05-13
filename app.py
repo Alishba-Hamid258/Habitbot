@@ -13,10 +13,18 @@ from utils import (
     get_current_streak, load_core_habits, save_core_habits, get_todays_logged_habits, unlog_habit,
     get_weekly_summary, get_consistency_score, get_user_badges,
     save_reflection, load_reflections, get_all_habits,
-    process_uploaded_file, get_notification_js, get_permission_js, get_chime_html, get_ticking_html,
+    process_uploaded_file, get_notification_js, get_permission_js,
     log_focus_session, get_total_focus_time, get_heatmap_data, generate_life_audit,
     archive_current_chat, get_chat_archives, get_archived_messages, delete_chat_archive
 )
+
+def get_chime_html():
+    chime_url = "https://actions.google.com/sounds/v1/alarms/beep_short.ogg"
+    return f"""<div style="display:none;"><audio autoplay><source src="{chime_url}" type="audio/ogg"></audio></div>"""
+
+def get_ticking_html():
+    tick_url = "https://www.soundjay.com/clock/clock-ticking-2.mp3"
+    return f"""<div style="display:none;"><audio autoplay loop><source src="{tick_url}" type="audio/mpeg"></audio></div>"""
 
 def extract_json_from_text(text):
     """Robustly extract a JSON list from LLM output that may contain markdown fences or extra text."""
