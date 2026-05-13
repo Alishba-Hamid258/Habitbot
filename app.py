@@ -1,5 +1,6 @@
 import streamlit as st
 import json
+import re
 import logging
 import pandas as pd
 import plotly.express as px
@@ -14,9 +15,36 @@ from utils import (
     save_reflection, load_reflections, get_all_habits,
     process_uploaded_file, get_notification_js, get_permission_js, get_chime_html,
     log_focus_session, get_total_focus_time, get_heatmap_data, generate_life_audit,
-    archive_current_chat, get_chat_archives, get_archived_messages,
-    extract_json_from_text
+    archive_current_chat, get_chat_archives, get_archived_messages
 )
+
+def extract_json_from_text(text):
+    """Robustly extract a JSON list from LLM output that may contain markdown fences or extra text."""
+    text = text.strip()
+    # 1. Direct parse
+    try:
+        result = json.loads(text)
+        return result if isinstance(result, list) else [result]
+    except (json.JSONDecodeError, ValueError):
+        pass
+    # 2. Extract from markdown code fences
+    fence_match = re.search(r'```(?:json)?\s*\n?(.*?)\n?\s*```', text, re.DOTALL)
+    if fence_match:
+        try:
+            result = json.loads(fence_match.group(1).strip())
+            return result if isinstance(result, list) else [result]
+        except (json.JSONDecodeError, ValueError):
+            pass
+    # 3. Find first [...] block
+    bracket_match = re.search(r'\[.*\]', text, re.DOTALL)
+    if bracket_match:
+        try:
+            result = json.loads(bracket_match.group(0))
+            return result if isinstance(result, list) else [result]
+        except (json.JSONDecodeError, ValueError):
+            pass
+    # 4. Nothing worked
+    raise ValueError("Could not extract valid JSON from AI response")
 
 # Cached wrappers defined here to avoid cross-file import issues on Streamlit Cloud
 @st.cache_data(ttl=300)
