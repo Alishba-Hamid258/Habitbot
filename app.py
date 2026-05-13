@@ -173,44 +173,44 @@ if "timer_max_seconds" not in st.session_state: st.session_state.timer_max_secon
 if st.session_state.user_id is None:
     # Only show the login form if no cookie was found or we are in logout mode
     col1, col2, col3 = st.columns([1, 2, 1])
-        with col2:
-            st.title("🤖 HabitBot v4.0")
-            st.markdown("### Secure Login & Privacy")
-            
-            tab_login, tab_signup = st.tabs(["🔐 Login", "📝 Sign Up"])
-            
-            with tab_login:
-                u = st.text_input("Username", key="l_u")
-                p = st.text_input("Password", type="password", key="l_p")
-                if st.button("Login", width="stretch"):
-                    uid = verify_user(u, p)
+    with col2:
+        st.title("🤖 HabitBot v4.0")
+        st.markdown("### Secure Login & Privacy")
+        
+        tab_login, tab_signup = st.tabs(["🔐 Login", "📝 Sign Up"])
+        
+        with tab_login:
+            u = st.text_input("Username", key="l_u")
+            p = st.text_input("Password", type="password", key="l_p")
+            if st.button("Login", width="stretch"):
+                uid = verify_user(u, p)
+                if uid:
+                    st.session_state.user_id = uid
+                    st.session_state.logout_triggered = False # Reset flag
+                    # Save to cookie for 30 days
+                    import datetime as dt
+                    expiry = dt.datetime.now() + dt.timedelta(days=30)
+                    cookie_manager.set("habitbot_user_id", str(uid), expires_at=expiry)
+                    st.rerun()
+                else:
+                    st.error("Invalid username or password.")
+        
+        with tab_signup:
+            st.info("Start your journey to mastery today.")
+            new_u = st.text_input("Choose Username", key="s_u")
+            new_p = st.text_input("Choose Password", type="password", key="s_p")
+            confirm_p = st.text_input("Confirm Password", type="password", key="s_pc")
+            if st.button("Create Account", width="stretch"):
+                if new_p != confirm_p:
+                    st.error("Passwords do not match!")
+                elif len(new_p) < 6:
+                    st.error("Password must be at least 6 characters.")
+                else:
+                    uid = create_user(new_u, new_p)
                     if uid:
-                        st.session_state.user_id = uid
-                        st.session_state.logout_triggered = False # Reset flag
-                        # Save to cookie for 30 days
-                        import datetime as dt
-                        expiry = dt.datetime.now() + dt.timedelta(days=30)
-                        cookie_manager.set("habitbot_user_id", str(uid), expires_at=expiry)
-                        st.rerun()
+                        st.success("Account created! You can now log in.")
                     else:
-                        st.error("Invalid username or password.")
-            
-            with tab_signup:
-                st.info("Start your journey to mastery today.")
-                new_u = st.text_input("Choose Username", key="s_u")
-                new_p = st.text_input("Choose Password", type="password", key="s_p")
-                confirm_p = st.text_input("Confirm Password", type="password", key="s_pc")
-                if st.button("Create Account", width="stretch"):
-                    if new_p != confirm_p:
-                        st.error("Passwords do not match!")
-                    elif len(new_p) < 6:
-                        st.error("Password must be at least 6 characters.")
-                    else:
-                        uid = create_user(new_u, new_p)
-                        if uid:
-                            st.success("Account created! You can now log in.")
-                        else:
-                            st.error("Username already taken.")
+                        st.error("Username already taken.")
     st.stop()
 
 # ==========================================
