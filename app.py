@@ -13,7 +13,7 @@ from utils import (
     get_current_streak, load_core_habits, save_core_habits, get_todays_logged_habits, unlog_habit,
     get_weekly_summary, get_consistency_score, get_user_badges,
     save_reflection, load_reflections, get_all_habits,
-    process_uploaded_file, get_notification_js, get_permission_js, get_chime_html,
+    process_uploaded_file, get_notification_js, get_permission_js, get_chime_html, get_ticking_html,
     log_focus_session, get_total_focus_time, get_heatmap_data, generate_life_audit,
     archive_current_chat, get_chat_archives, get_archived_messages, delete_chat_archive
 )
@@ -190,7 +190,6 @@ with st.sidebar:
                 st.session_state.timer_active = False
                 st.rerun()
             # Ticking Sound
-            from utils import get_ticking_html
             st.markdown(get_ticking_html(), unsafe_allow_html=True)
         else:
             if st.button("🚀 Start Timer", use_container_width=True, key="sb_start"): 
