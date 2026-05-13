@@ -155,10 +155,19 @@ if "logout_triggered" not in st.session_state:
 
 # PERSISTENT LOGIN RECOVERY (Only if we haven't manually logged out)
 if st.session_state.user_id is None and not st.session_state.logout_triggered:
-    # Attempt to read cookie
+    # 🛡️ Silent Cookie Sync (Wait max 4 reruns for the JS component to respond)
+    if "sync_attempts" not in st.session_state: st.session_state.sync_attempts = 0
+    
     saved_uid = cookie_manager.get(cookie="habitbot_user_id")
-    if saved_uid and st.session_state.user_id != int(saved_uid):
+    if saved_uid:
         st.session_state.user_id = int(saved_uid)
+        st.session_state.sync_attempts = 0 # Reset
+        st.rerun()
+    elif st.session_state.sync_attempts < 4:
+        # Give the cookie manager time to load without a giant blocking screen
+        st.session_state.sync_attempts += 1
+        import time
+        time.sleep(0.1) # Micro-sleep to allow JS/Python sync
         st.rerun()
 
 if "last_input" not in st.session_state: st.session_state.last_input = ""
