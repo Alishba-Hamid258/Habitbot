@@ -499,23 +499,33 @@ with tab_todo:
     st.subheader("AI Task Architect")
     todos = load_todos(uid)
     
+    ai_prompt = st.text_area("💡 Describe your goals or what you want to accomplish:", 
+                              placeholder="e.g. I want to prepare for my exams, exercise daily, and read more books this week...",
+                              key="ai_task_prompt")
+    
     if st.button("✨ Generate AI Tasks"):
-        with st.spinner("Analyzing goals..."):
-            history = get_weekly_summary(uid)
-            msg = [{"role": "system", "content": ARCHITECT_PROMPT}, {"role": "user", "content": f"My weekly summary:\n{history}"}]
-            ai_tasks_json = call_llm(msg)
-            try:
-                new_tasks = json.loads(ai_tasks_json)
-                # Normalize AI tasks to always have all required keys
-                for task in new_tasks:
-                    task.setdefault("done", False)
-                    task.setdefault("task", "Untitled Task")
-                    task.setdefault("priority", "Medium")
-                    task.setdefault("time", "")
-                todos.extend(new_tasks)
-                save_todos(uid, todos)
-                st.rerun()
-            except: st.error("AI returned invalid task format.")
+        if not ai_prompt.strip():
+            st.warning("Please describe your goals first so the AI can generate relevant tasks.")
+        else:
+            with st.spinner("Analyzing your goals..."):
+                history = get_weekly_summary(uid)
+                msg = [
+                    {"role": "system", "content": ARCHITECT_PROMPT}, 
+                    {"role": "user", "content": f"My goals: {ai_prompt}\n\nMy weekly progress so far:\n{history}"}
+                ]
+                ai_tasks_json = call_llm(msg)
+                try:
+                    new_tasks = json.loads(ai_tasks_json)
+                    # Normalize AI tasks to always have all required keys
+                    for task in new_tasks:
+                        task.setdefault("done", False)
+                        task.setdefault("task", "Untitled Task")
+                        task.setdefault("priority", "Medium")
+                        task.setdefault("time", "")
+                    todos.extend(new_tasks)
+                    save_todos(uid, todos)
+                    st.rerun()
+                except: st.error("AI returned invalid task format. Please try again.")
 
     # Manual Add
     with st.expander("➕ Add Task Manually"):
