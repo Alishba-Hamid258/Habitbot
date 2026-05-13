@@ -15,7 +15,7 @@ from utils import (
     save_reflection, load_reflections, get_all_habits,
     process_uploaded_file, get_notification_js, get_permission_js, get_chime_html,
     log_focus_session, get_total_focus_time, get_heatmap_data, generate_life_audit,
-    archive_current_chat, get_chat_archives, get_archived_messages
+    archive_current_chat, get_chat_archives, get_archived_messages, delete_chat_archive
 )
 
 def extract_json_from_text(text):
@@ -390,8 +390,12 @@ with tab_chat:
         archives = get_chat_archives(uid)
         if archives:
             for sid, name, ts in archives:
-                if st.button(f"📄 {ts} | {name}", key=f"arch_{sid}", width="stretch"):
+                arch_col, del_col = st.columns([0.85, 0.15])
+                if arch_col.button(f"📄 {ts} | {name}", key=f"arch_{sid}", use_container_width=True):
                     st.session_state.view_archive = get_archived_messages(uid, sid)
+                    st.rerun()
+                if del_col.button("🗑️", key=f"del_{sid}", help="Delete this session"):
+                    delete_chat_archive(uid, sid)
                     st.rerun()
         else:
             st.write("No archived sessions yet.")

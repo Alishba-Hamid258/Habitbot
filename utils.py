@@ -124,6 +124,13 @@ def get_archived_messages(user_id, session_id):
     conn.close()
     return [{"role": row[0], "content": row[1]} for row in rows]
 
+def delete_chat_archive(user_id, session_id):
+    conn = get_connection()
+    c = conn.cursor()
+    c.execute("DELETE FROM chat_archives WHERE user_id = ? AND session_id = ?", (user_id, session_id))
+    conn.commit()
+    conn.close()
+
 # ================================
 # HABITS LOG & MATRIX
 # ================================
