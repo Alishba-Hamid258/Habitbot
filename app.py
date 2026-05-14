@@ -529,9 +529,12 @@ elif page == "📚 Library":
     with lib_tab1:
         st.markdown("### 📖 The Habit Blueprint")
         books = [
-            {"title": "Atomic Habits", "author": "James Clear", "desc": "An easy and proven way to build good habits.", "link": "https://jamesclear.com/atomic-habits", "icon": "⚛️"},
-            {"title": "Tiny Habits", "author": "BJ Fogg, PhD", "desc": "The small changes that change everything.", "link": "https://www.tinyhabits.com/book", "icon": "🌱"},
-            {"title": "Deep Work", "author": "Cal Newport", "desc": "Rules for focused success in a distracted world.", "link": "https://www.calnewport.com/books/deep-work/", "icon": "🧠"}
+            {"title": "The Power of Habit", "author": "Charles Duhigg", "desc": "Why we do what we do in life and business.", "link": "https://dn710109.ca.archive.org/0/items/the-power-of-habit-charles-duhigg/The%20Power%20of%20Habit%20-%20Charles%20Duhigg.pdf", "icon": "🔄"},
+            {"title": "Think and Grow Rich", "author": "Napoleon Hill", "desc": "The classic guide to success and wealth.", "link": "https://pdf.infobooks.org//ING/Autores/Napoleon%20Hill/think-and-grow-rich-napoleon-hill.pdf", "icon": "💰"},
+            {"title": "As a Man Thinketh", "author": "James Allen", "desc": "How your thoughts shape your reality.", "link": "https://pdf.infobooks.org/ING/PDF/as-a-man-thinketh-james-allen.pdf", "icon": "🧠"},
+            {"title": "The Science of Getting Rich", "author": "Wallace D. Wattles", "desc": "The mental science behind prosperity.", "link": "https://pdf.infobooks.org/ING/PDF/the-science-of-getting-rich.pdf", "icon": "📈"},
+            {"title": "The Power of Concentration", "author": "Theron Q. Dumont", "desc": "Exercises to train your focus like a muscle.", "link": "https://pdf.infobooks.org/ING/PDF/thepower-of-concentration-theron-q-dumont.pdf", "icon": "🎯"},
+            {"title": "Deep Work", "author": "Cal Newport", "desc": "Rules for focused success in a distracted world.", "link": "https://www.calnewport.com/books/deep-work/", "icon": "🧪"}
         ]
         for b in books:
             with st.container(border=True):
