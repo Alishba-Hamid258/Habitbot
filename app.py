@@ -282,15 +282,7 @@ if st.session_state.user_id is None:
                 else:
                     uid = create_user(new_u, new_p)
                     if uid:
-                        st.session_state.user_id = uid
-                        st.session_state.logout_triggered = False
-                        # Save to cookie for 30 days
-                        import datetime as dt
-                        expiry = dt.datetime.now() + dt.timedelta(days=30)
-                        cookie_manager.set("habitbot_v4_uid", str(uid), expires_at=expiry)
-                        st.query_params["uid"] = str(uid)
-                        st.success("Account created! Welcome to HabitBot.")
-                        st.rerun()
+                        st.success("Account created! You can now switch to the 'Login' tab to enter.")
                     else:
                         st.error("Username already taken.")
     st.stop()
