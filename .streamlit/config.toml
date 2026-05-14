@@ -4,6 +4,3 @@ fileWatcherType = "none"
 
 [browser]
 gatherUsageStats = false
-
-[ui]
-initialSidebarState = "expanded"
