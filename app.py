@@ -551,7 +551,8 @@ elif page == "📚 Library":
             {"title": "Atomic Habits Summary", "url": "https://www.youtube.com/watch?v=PZ7lDrwYdZc"},
             {"title": "Deep Work Masterclass", "url": "https://www.youtube.com/watch?v=3E7hkPZ-HTk"},
             {"title": "The Science of Habits", "url": "https://www.youtube.com/watch?v=Wcs2PFz5q6g"},
-            {"title": "Mindset of a Champion", "url": "https://www.youtube.com/watch?v=yiB6VlSjUOk"}
+            {"title": "Mindset of a Champion", "url": "https://www.youtube.com/watch?v=yiB6VlSjUOk"},
+            {"title": "Optimal Daily Routine", "url": "https://www.youtube.com/watch?v=S9DdUhLLdlM"}
         ]
         # 2-column grid for videos
         for i in range(0, len(videos), 2):
