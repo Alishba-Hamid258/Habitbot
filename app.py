@@ -546,9 +546,9 @@ elif page == "📚 Library":
         st.caption("Curated high-performance habit videos.")
         videos = [
             {"title": "Atomic Habits Summary", "url": "https://www.youtube.com/watch?v=PZ7lDrwYdZc"},
-            {"title": "Deep Work Masterclass", "url": "https://www.youtube.com/watch?v=mDbaB7u1H3k"},
-            {"title": "The Science of Consistency", "url": "https://www.youtube.com/watch?v=TAs7I0Taqf4"},
-            {"title": "Mindset of a Champion", "url": "https://www.youtube.com/watch?v=mID_YpWCHwQ"}
+            {"title": "Deep Work Masterclass", "url": "https://www.youtube.com/watch?v=u6XGZ2u_YxM"},
+            {"title": "The Science of Habits", "url": "https://www.youtube.com/watch?v=Wcs2PFz5q6g"},
+            {"title": "Mindset of a Champion", "url": "https://www.youtube.com/watch?v=T9GvDiaiZ8k"}
         ]
         # 2-column grid for videos
         for i in range(0, len(videos), 2):
