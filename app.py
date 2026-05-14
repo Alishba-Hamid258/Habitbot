@@ -56,7 +56,7 @@ def _cached_heatmap_data(user_id):
 def _cached_habit_stats(user_id):
     return get_habit_stats(user_id)
 from auth import create_user, verify_user
-from db import init_db
+from db import init_db, DB_NAME
 
 # Page Config (First Streamlit call)
 st.set_page_config(page_title="HabitBot | Your Personal Coach", layout="wide", page_icon="🤖", initial_sidebar_state="expanded")
@@ -100,7 +100,7 @@ def get_callbacks(user_id):
         "toggle_daily": lambda h: (unlog_habit(user_id, h) if h in get_todays_logged_habits(user_id) else log_habit(user_id, h, "Daily Matrix"))
     }
 
-# PERSISTENT LOGIN RECOVERY (One-time check, no reruns)
+# PERSISTENT LOGIN RECOVERY (One-time check, no reruns here to avoid loops)
 if st.session_state.user_id is None and not st.session_state.logout_triggered:
     if "uid" in st.query_params:
         try: st.session_state.user_id = int(st.query_params["uid"])
@@ -232,8 +232,18 @@ with st.sidebar:
 # AUTHENTICATION SCREEN
 # ==========================================
 if st.session_state.user_id is None:
+    st.session_state.sync_attempts += 1
+    # --- COOKIE RECOVERY ATTEMPT ---
+    if not st.session_state.logout_triggered:
+        try:
+            cookie_val = cookie_manager.get("habitbot_v4_uid")
+            if cookie_val:
+                st.session_state.user_id = int(cookie_val)
+                st.rerun()
+        except: pass
+
     # Only show the login form if we've exhausted sync attempts or were logged out manually
-    if st.session_state.sync_attempts >= 4 or st.session_state.logout_triggered:
+    if st.session_state.logout_triggered or st.session_state.sync_attempts >= 5:
         col1, col2, col3 = st.columns([1, 2, 1])
         with col2:
             st.title("🤖 HabitBot v4.0")
@@ -271,7 +281,15 @@ if st.session_state.user_id is None:
                     else:
                         uid = create_user(new_u, new_p)
                         if uid:
-                            st.success("Account created! You can now log in.")
+                            st.session_state.user_id = uid
+                            st.session_state.logout_triggered = False
+                            # Save to cookie for 30 days
+                            import datetime as dt
+                            expiry = dt.datetime.now() + dt.timedelta(days=30)
+                            cookie_manager.set("habitbot_v4_uid", str(uid), expires_at=expiry)
+                            st.query_params["uid"] = str(uid)
+                            st.success("Account created! Welcome to HabitBot.")
+                            st.rerun()
                         else:
                             st.error("Username already taken.")
     st.stop()
@@ -505,19 +523,38 @@ elif page == "📓 Logbook":
             st.success("Reflected! See you tomorrow.")
 
     st.markdown("---")
-    st.markdown("### 📥 Life Audit Export")
-    st.caption("Take ownership of your data. Export your entire habit history, focus logs, and reflections to Excel.")
+    st.markdown("### 💾 Data Safety & Backups")
+    st.caption("Since HabitBot is currently in a cloud environment, local data can be reset during server updates. Protect your progress by exporting regularly.")
     
-    if st.button("Prepare Audit File"):
-        with st.spinner("Compiling your legendary journey..."):
-            audit_data = generate_life_audit(uid)
-            st.download_button(
-                label="📥 Click here to Download Life Audit (.xlsx)",
-                data=audit_data,
-                file_name=f"HabitBot_Life_Audit_{datetime.now().strftime('%Y-%m-%d')}.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                use_container_width=True
-            )
+    audit_col, db_col = st.columns(2)
+    with audit_col:
+        st.markdown("#### 📊 Life Audit")
+        st.write("Export your habits and reflections to an Excel file.")
+        if st.button("Prepare Audit File", use_container_width=True):
+            with st.spinner("Compiling your legendary journey..."):
+                audit_data = generate_life_audit(uid)
+                st.download_button(
+                    label="📥 Download Life Audit (.xlsx)",
+                    data=audit_data,
+                    file_name=f"HabitBot_Life_Audit_{datetime.now().strftime('%Y-%m-%d')}.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    use_container_width=True
+                )
+    
+    with db_col:
+        st.markdown("#### 🗄️ Raw Database")
+        st.write("Download the raw SQLite database for advanced backup.")
+        try:
+            with open(DB_NAME, "rb") as f:
+                st.download_button(
+                    label="📥 Download Database (.db)",
+                    data=f,
+                    file_name=f"habitbot_backup_{datetime.now().strftime('%Y-%m-%d')}.db",
+                    mime="application/x-sqlite3",
+                    use_container_width=True
+                )
+        except Exception as e:
+            st.error("Could not prepare database backup.")
 
 # PAGE: LIBRARY
 elif page == "📚 Library":
