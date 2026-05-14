@@ -143,7 +143,9 @@ with st.sidebar:
             if st.button("Logout", use_container_width=True):
                 st.session_state.user_id = None
                 st.session_state.logout_triggered = True
-                try: cookie_manager.delete("habitbot_v4_uid")
+                try: 
+                    cookie_manager.set("habitbot_v4_uid", "None") # Explicitly invalidate
+                    cookie_manager.delete("habitbot_v4_uid")
                 except: pass
                 st.query_params.clear()
                 st.rerun()
@@ -237,7 +239,7 @@ if st.session_state.user_id is None:
     if not st.session_state.logout_triggered:
         try:
             cookie_val = cookie_manager.get("habitbot_v4_uid")
-            if cookie_val:
+            if cookie_val and cookie_val not in ["None", "null", "", "undefined"]:
                 st.session_state.user_id = int(cookie_val)
                 st.rerun()
         except: pass
