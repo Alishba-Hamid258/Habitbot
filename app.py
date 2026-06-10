@@ -391,7 +391,11 @@ if page == "💬 Habit Coach":
             dynamic_messages[0] = {"role": "system", "content": f"{SYSTEM_PROMPT}\n\nPROGRESS:\n{habit_summary}"}
             with st.chat_message("assistant", avatar="🤖"):
                 llm_response = call_llm(dynamic_messages, stream=True, image_data=image_data)
-                reply = st.write_stream(llm_response) if not isinstance(llm_response, str) else st.markdown(llm_response) or llm_response
+                if not isinstance(llm_response, str):
+                    reply = st.write_stream(llm_response)
+                else:
+                    st.markdown(llm_response)
+                    reply = llm_response
             st.session_state.messages.append({"role": "assistant", "content": reply})
             save_history(uid, st.session_state.messages)
             st.rerun()
