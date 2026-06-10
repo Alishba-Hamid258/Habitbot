@@ -8,6 +8,9 @@ def check_password(password, hashed):
     return bcrypt.checkpw(password.encode('utf-8'), hashed.encode('utf-8'))
 
 def create_user(username, password):
+    if not username:
+        return None
+    username = username.strip().lower()
     conn = get_connection()
     c = conn.cursor()
     password_hash = hash_password(password)
@@ -22,6 +25,9 @@ def create_user(username, password):
     return ret
 
 def verify_user(username, password):
+    if not username:
+        return None
+    username = username.strip().lower()
     conn = get_connection()
     c = conn.cursor()
     c.execute("SELECT id, password_hash FROM users WHERE username = ?", (username,))
@@ -31,3 +37,4 @@ def verify_user(username, password):
     if row and check_password(password, row[1]):
         return row[0]
     return None
+

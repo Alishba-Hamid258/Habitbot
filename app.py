@@ -373,30 +373,28 @@ if page == "💬 Habit Coach":
 
     uploaded_file = st.file_uploader("Attach context", type=["png", "jpg", "jpeg", "webp", "pdf", "txt", "md"])
     if prompt := st.chat_input("Ask about habits…"):
-        if prompt != st.session_state.last_input:
-            st.session_state.last_input = prompt
-            file_payload = process_uploaded_file(uploaded_file)
-            image_data = None
-            final_prompt = prompt
-            if file_payload:
-                if file_payload["type"] == "image": image_data = file_payload["data"]
-                else: final_prompt = f"{prompt}\n\n[FILE ATTACHMENT]:\n{file_payload['data']}"
-            with st.chat_message("user", avatar="👤"): st.markdown(prompt)
-            if not is_on_topic(prompt, st.session_state.messages):
-                refusal = "I specialized in habits and productivity."
-                with st.chat_message("assistant", avatar="🤖"): st.markdown(refusal)
-                st.session_state.messages.append({"role": "assistant", "content": refusal})
-            else:
-                st.session_state.messages.append({"role": "user", "content": final_prompt})
-                habit_summary = get_habit_context(uid)
-                dynamic_messages = st.session_state.messages.copy()
-                dynamic_messages[0] = {"role": "system", "content": f"{SYSTEM_PROMPT}\n\nPROGRESS:\n{habit_summary}"}
-                with st.chat_message("assistant", avatar="🤖"):
-                    llm_response = call_llm(dynamic_messages, stream=True, image_data=image_data)
-                    reply = st.write_stream(llm_response) if not isinstance(llm_response, str) else st.markdown(llm_response) or llm_response
-                st.session_state.messages.append({"role": "assistant", "content": reply})
-                save_history(uid, st.session_state.messages)
-                st.rerun()
+        file_payload = process_uploaded_file(uploaded_file)
+        image_data = None
+        final_prompt = prompt
+        if file_payload:
+            if file_payload["type"] == "image": image_data = file_payload["data"]
+            else: final_prompt = f"{prompt}\n\n[FILE ATTACHMENT]:\n{file_payload['data']}"
+        with st.chat_message("user", avatar="👤"): st.markdown(prompt)
+        if file_payload is None and not is_on_topic(prompt, st.session_state.messages):
+            refusal = "I specialized in habits and productivity."
+            with st.chat_message("assistant", avatar="🤖"): st.markdown(refusal)
+            st.session_state.messages.append({"role": "assistant", "content": refusal})
+        else:
+            st.session_state.messages.append({"role": "user", "content": final_prompt})
+            habit_summary = get_habit_context(uid)
+            dynamic_messages = st.session_state.messages.copy()
+            dynamic_messages[0] = {"role": "system", "content": f"{SYSTEM_PROMPT}\n\nPROGRESS:\n{habit_summary}"}
+            with st.chat_message("assistant", avatar="🤖"):
+                llm_response = call_llm(dynamic_messages, stream=True, image_data=image_data)
+                reply = st.write_stream(llm_response) if not isinstance(llm_response, str) else st.markdown(llm_response) or llm_response
+            st.session_state.messages.append({"role": "assistant", "content": reply})
+            save_history(uid, st.session_state.messages)
+            st.rerun()
 
 # PAGE: ANALYTICS
 elif page == "📊 Analytics":

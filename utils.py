@@ -17,11 +17,28 @@ def get_habit_heatmap_v2(user_id):
     return get_heatmap_data(user_id)
 
 def is_on_topic(prompt: str, history: list = None) -> bool:
-    prompt_lower = prompt.lower()
+    # If a conversation is already active, trust the context and allow follow-up
+    if history and len(history) > 1:
+        return True
+
+    prompt_lower = prompt.lower().strip()
+    
+    # Allow greeting and initial help queries
+    conversational_keywords = [
+        "hi", "hello", "hey", "help", "start", "info", "guidelines", "setup"
+    ]
+    if any(prompt_lower.startswith(kw) or f" {kw} " in f" {prompt_lower} " for kw in conversational_keywords):
+        return True
+
     productivity_keywords = [
-        "habit", "goal", "routine", "time", "focus", "distraction", "pomodoro",
-        "task", "todo", "plan", "schedule", "procrastination", "motivation",
-        "sleep", "diet", "exercise", "workout", "reading", "learn", "meditate", "journal"
+        # Habits & Routines (handles typos like habbit, habbits, routines)
+        "habit", "habbi", "hab", "routin", "rout", "morn", "even", "daily",
+        # Productivity & Time (handles productivty, tasks, schedules, etc.)
+        "prod", "time", "focus", "distrac", "pomodoro", "pomo", "task", "todo", "to-do", 
+        "plan", "schedu", "procr", "motiv", "disciplin", "consist", "streak", "work",
+        # Health, Mindset & Learning
+        "sleep", "diet", "exer", "worko", "read", "lear", "medit", "journ", "mindset",
+        "book", "library"
     ]
     if any(kw in prompt_lower for kw in productivity_keywords):
         return True
