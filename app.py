@@ -629,41 +629,84 @@ pwa_html = """
     .block-container { padding-top: 1rem !important; }
     [data-testid="stSidebar"] { background-color: #0E1117 !important; }
     
-    /* Sleek, Low-Profile File Uploader */
+    /* Sleek, Low-Profile File Uploader styled as inline '+' button */
     div[data-testid="stFileUploader"] {
+        position: fixed !important;
+        bottom: 28px !important;
+        width: 34px !important;
+        height: 34px !important;
+        z-index: 999999 !important;
+        overflow: visible !important;
         padding: 0 !important;
-        margin-bottom: 10px !important;
     }
+
+    @media (min-width: 768px) {
+        div[data-testid="stFileUploader"] {
+            left: calc(50% - 357px) !important; /* Centered layout offset for start of input */
+        }
+    }
+
+    @media (max-width: 767px) {
+        div[data-testid="stFileUploader"] {
+            left: 24px !important; /* Mobile layout left margin */
+        }
+    }
+
+    /* Customize the file uploader dropzone into a circular '+' button */
     div[data-testid="stFileUploader"] section {
-        padding: 10px 16px !important;
-        min-height: unset !important;
-        border-radius: 12px !important;
-        border: 1px dashed rgba(255, 255, 255, 0.15) !important;
-        background-color: rgba(255, 255, 255, 0.03) !important;
-        transition: border-color 0.2s ease, background-color 0.2s ease;
-    }
-    div[data-testid="stFileUploader"] section:hover {
-        border-color: rgba(255, 255, 255, 0.3) !important;
-        background-color: rgba(255, 255, 255, 0.05) !important;
-    }
-    /* Make dropzone layout compact */
-    div[data-testid="stFileUploader"] [data-testid="stUploadFileDropzone"] {
+        width: 34px !important;
+        height: 34px !important;
         padding: 0 !important;
-    }
-    div[data-testid="stFileUploader"] [data-testid="stUploadFileDropzone"] > div {
-        flex-direction: row !important;
+        min-height: unset !important;
+        border-radius: 50% !important;
+        border: 1px solid rgba(255, 255, 255, 0.2) !important;
+        background-color: rgba(255, 255, 255, 0.05) !important;
+        display: flex !important;
         align-items: center !important;
         justify-content: center !important;
-        gap: 12px !important;
+        cursor: pointer !important;
+        overflow: hidden !important;
+        transition: background-color 0.2s ease, border-color 0.2s ease;
     }
-    /* Hide default large upload icon and sub-text to make it low-profile */
-    div[data-testid="stFileUploader"] [data-testid="stUploadFileDropzone"] svg {
-        width: 20px !important;
-        height: 20px !important;
-        margin: 0 !important;
+
+    div[data-testid="stFileUploader"] section:hover {
+        background-color: rgba(255, 255, 255, 0.15) !important;
+        border-color: rgba(255, 255, 255, 0.4) !important;
     }
-    div[data-testid="stFileUploader"] [data-testid="stUploadFileDropzone"] small {
+
+    /* Hide all text inside the dropzone */
+    div[data-testid="stFileUploader"] section > div {
         display: none !important;
+    }
+
+    /* Inject a '+' sign using pseudo-element */
+    div[data-testid="stFileUploader"] section::after {
+        content: "+" !important;
+        font-size: 20px !important;
+        color: rgba(255, 255, 255, 0.7) !important;
+        font-weight: normal !important;
+        display: block !important;
+        line-height: 34px !important;
+        text-align: center !important;
+    }
+
+    /* Shift the chat input content area to the right to make room for the '+' button */
+    div[data-testid="stChatInput"] {
+        padding-left: 45px !important;
+    }
+
+    /* Let the uploaded file name floating container render above the chat bar */
+    div[data-testid="stFileUploader"] [data-testid="stUploadedFileData"] {
+        position: absolute !important;
+        bottom: 45px !important;
+        left: -8px !important;
+        width: 260px !important;
+        background-color: #1e1e1e !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        border-radius: 8px !important;
+        padding: 8px !important;
+        z-index: 10000 !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5) !important;
     }
 </style>
 <meta name="apple-mobile-web-app-capable" content="yes">
