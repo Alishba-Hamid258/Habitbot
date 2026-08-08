@@ -629,33 +629,30 @@ pwa_html = """
     .block-container { padding-top: 1rem !important; }
     [data-testid="stSidebar"] { background-color: #0E1117 !important; }
     
-    /* Sleek, Low-Profile File Uploader styled as inline '+' button */
+    /* Initially hide to prevent layout flicker, display once nested */
     div[data-testid="stFileUploader"] {
-        position: fixed !important;
-        bottom: 28px !important;
-        width: 34px !important;
-        height: 34px !important;
+        display: none !important;
+    }
+    
+    /* Sleek, Low-Profile File Uploader styled as inline '+' button inside stChatInput */
+    div[data-testid="stChatInput"] div[data-testid="stFileUploader"] {
+        display: block !important;
+        position: absolute !important;
+        left: 12px !important;
+        top: 50% !important;
+        transform: translateY(-50%) !important;
+        width: 32px !important;
+        height: 32px !important;
         z-index: 999999 !important;
         overflow: visible !important;
         padding: 0 !important;
-    }
-
-    @media (min-width: 768px) {
-        div[data-testid="stFileUploader"] {
-            left: calc(50% - 357px) !important; /* Centered layout offset for start of input */
-        }
-    }
-
-    @media (max-width: 767px) {
-        div[data-testid="stFileUploader"] {
-            left: 24px !important; /* Mobile layout left margin */
-        }
+        margin: 0 !important;
     }
 
     /* Customize the file uploader dropzone into a circular '+' button */
-    div[data-testid="stFileUploader"] section {
-        width: 34px !important;
-        height: 34px !important;
+    div[data-testid="stChatInput"] div[data-testid="stFileUploader"] section {
+        width: 32px !important;
+        height: 32px !important;
         padding: 0 !important;
         min-height: unset !important;
         border-radius: 50% !important;
@@ -669,37 +666,38 @@ pwa_html = """
         transition: background-color 0.2s ease, border-color 0.2s ease;
     }
 
-    div[data-testid="stFileUploader"] section:hover {
+    div[data-testid="stChatInput"] div[data-testid="stFileUploader"] section:hover {
         background-color: rgba(255, 255, 255, 0.15) !important;
         border-color: rgba(255, 255, 255, 0.4) !important;
     }
 
     /* Hide all text inside the dropzone */
-    div[data-testid="stFileUploader"] section > div {
+    div[data-testid="stChatInput"] div[data-testid="stFileUploader"] section > div {
         display: none !important;
     }
 
     /* Inject a '+' sign using pseudo-element */
-    div[data-testid="stFileUploader"] section::after {
+    div[data-testid="stChatInput"] div[data-testid="stFileUploader"] section::after {
         content: "+" !important;
         font-size: 20px !important;
         color: rgba(255, 255, 255, 0.7) !important;
         font-weight: normal !important;
         display: block !important;
-        line-height: 34px !important;
+        line-height: 28px !important;
         text-align: center !important;
     }
 
     /* Shift the chat input content area to the right to make room for the '+' button */
     div[data-testid="stChatInput"] {
-        padding-left: 45px !important;
+        padding-left: 48px !important;
+        position: relative !important;
     }
 
     /* Let the uploaded file name floating container render above the chat bar */
-    div[data-testid="stFileUploader"] [data-testid="stUploadedFileData"] {
+    div[data-testid="stChatInput"] div[data-testid="stFileUploader"] [data-testid="stUploadedFileData"] {
         position: absolute !important;
         bottom: 45px !important;
-        left: -8px !important;
+        left: -4px !important;
         width: 260px !important;
         background-color: #1e1e1e !important;
         border: 1px solid rgba(255, 255, 255, 0.1) !important;
@@ -712,5 +710,21 @@ pwa_html = """
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0E1117">
+
+<script>
+    (function() {
+        function moveUploader() {
+            const uploader = document.querySelector('div[data-testid="stFileUploader"]');
+            const chatInput = document.querySelector('div[data-testid="stChatInput"]');
+            if (uploader && chatInput) {
+                if (uploader.parentNode !== chatInput) {
+                    chatInput.insertBefore(uploader, chatInput.firstChild);
+                }
+            }
+        }
+        moveUploader();
+        setInterval(moveUploader, 200);
+    })();
+</script>
 """
 st.markdown(pwa_html, unsafe_allow_html=True)
