@@ -408,6 +408,10 @@ if page == "💬 Habit Coach":
                 else:
                     st.markdown(llm_response)
                     reply = llm_response
+            
+            # Sanitize final saved replies against unclosed think tags
+            from api import clean_think_tags
+            reply = clean_think_tags(reply)
             st.session_state.messages.append({"role": "assistant", "content": reply})
             save_history(uid, st.session_state.messages)
             st.rerun()

@@ -99,7 +99,55 @@ def call_llm(messages: list[dict], stream: bool = False, image_data: str = None)
                 except Exception as exc:
                     log.exception("=== STREAM ERROR ===")
                     yield f"\n\n⚠️ Error: {exc}"
-            return stream_generator()
+            
+            # Since Qwen streams thinking tokens inside <think>...</think>,
+            # we wrap the generator to strip out thinking tags dynamically.
+            def streaming_think_filter(gen):
+                in_think = False
+                buffer = ""
+                for chunk in gen:
+                    buffer += chunk
+                    while True:
+                        if not in_think:
+                            # Look for start of thinking tag
+                            start_idx = buffer.find("<think>")
+                            if start_idx != -1:
+                                # Yield everything before the thinking block starts
+                                if start_idx > 0:
+                                    yield buffer[:start_idx]
+                                in_think = True
+                                buffer = buffer[start_idx + 7:]
+                            else:
+                                # No start tag found. Check for partial '<' or '<t' at the end of buffer
+                                # to prevent yielding partial tags
+                                partial_match = False
+                                for i in range(1, min(len(buffer) + 1, 8)):
+                                    suffix = buffer[-i:]
+                                    if "<think>".startswith(suffix):
+                                        partial_match = True
+                                        if len(buffer) > i:
+                                            yield buffer[:-i]
+                                            buffer = suffix
+                                        break
+                                if not partial_match:
+                                    yield buffer
+                                    buffer = ""
+                                break
+                        else:
+                            # Inside thinking block, look for end of thinking tag
+                            end_idx = buffer.find("</think>")
+                            if end_idx != -1:
+                                in_think = False
+                                buffer = buffer[end_idx + 8:]
+                            else:
+                                # Still thinking, empty buffer because we discard thinking tokens
+                                buffer = ""
+                                break
+                # Yield any leftover non-thinking text
+                if not in_think and buffer:
+                    yield buffer
+
+            return streaming_think_filter(stream_generator())
         else:
             import time
             max_retries = 3
