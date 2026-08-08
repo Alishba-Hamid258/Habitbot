@@ -28,7 +28,7 @@ def call_llm(messages: list[dict], stream: bool = False, image_data: str = None)
     # DYNAMIC MODEL SWITCHING & MULTIMODAL PAYLOAD
     model = Config.MODEL
     if image_data:
-        model = "meta-llama/llama-4-scout-17b-16e-instruct"
+        model = "qwen/qwen3.6-27b"
         stream = False  # Vision requests don't reliably support streaming
         # Deep copy to avoid mutating the caller's message objects
         import copy

@@ -460,13 +460,24 @@ def process_uploaded_file(uploaded_file):
     file_name = uploaded_file.name.lower()
     if file_name.endswith(('.png', '.jpg', '.jpeg', '.webp')):
         return {"type": "image", "data": encode_image(uploaded_file)}
-    elif file_name.endswith('.pdf'):
-        return {"type": "text", "data": extract_text_from_pdf(uploaded_file)}
+    
+    text_data = None
+    if file_name.endswith('.pdf'):
+        text_data = extract_text_from_pdf(uploaded_file)
     elif file_name.endswith(('.txt', '.md', '.csv')):
         uploaded_file.seek(0)
-        return {"type": "text", "data": uploaded_file.read().decode("utf-8")}
-    else:
-        return None
+        try:
+            text_data = uploaded_file.read().decode("utf-8")
+        except Exception as e:
+            text_data = f"Error reading text file: {e}"
+            
+    if text_data is not None:
+        max_char_limit = 8000
+        if len(text_data) > max_char_limit:
+            text_data = text_data[:max_char_limit] + "\n\n[CONTEXT TRUNCATED DUE TO SIZE LIMITATION]"
+        return {"type": "text", "data": text_data}
+        
+    return None
 
 # ================================
 # NOTIFICATIONS & ALERTS

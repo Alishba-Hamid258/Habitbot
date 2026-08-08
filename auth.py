@@ -38,3 +38,43 @@ def verify_user(username, password):
         return row[0]
     return None
 
+import secrets
+
+def create_session(user_id):
+    """Generate a secure session token for user_id and store it in user_sessions."""
+    session_token = secrets.token_hex(32)
+    conn = get_connection()
+    c = conn.cursor()
+    try:
+        c.execute("INSERT INTO user_sessions (user_id, session_token) VALUES (?, ?)", (user_id, session_token))
+        conn.commit()
+        ret = session_token
+    except Exception:
+        ret = None
+    conn.close()
+    return ret
+
+def verify_session(session_token):
+    """Verify session token and return user_id, or None if invalid."""
+    if not session_token:
+        return None
+    conn = get_connection()
+    c = conn.cursor()
+    c.execute("SELECT user_id FROM user_sessions WHERE session_token = ?", (session_token,))
+    row = c.fetchone()
+    conn.close()
+    if row:
+        return row[0]
+    return None
+
+def destroy_session(session_token):
+    """Delete session token from user_sessions."""
+    if not session_token:
+        return
+    conn = get_connection()
+    c = conn.cursor()
+    c.execute("DELETE FROM user_sessions WHERE session_token = ?", (session_token,))
+    conn.commit()
+    conn.close()
+
+

@@ -55,7 +55,7 @@ def _cached_heatmap_data(user_id):
 @st.cache_data(ttl=60)
 def _cached_habit_stats(user_id):
     return get_habit_stats(user_id)
-from auth import create_user, verify_user
+from auth import create_user, verify_user, create_session, verify_session, destroy_session
 from db import init_db, DB_NAME
 
 # Page Config (First Streamlit call)
@@ -80,12 +80,6 @@ if "timer_seconds" not in st.session_state: st.session_state.timer_seconds = 150
 if "timer_max_seconds" not in st.session_state: st.session_state.timer_max_seconds = 1500
 if "lib_custom_url" not in st.session_state: st.session_state.lib_custom_url = ""
 
-# PERSISTENT LOGIN RECOVERY (Simplified)
-if st.session_state.user_id is None and not st.session_state.logout_triggered:
-    if "uid" in st.query_params:
-        try: st.session_state.user_id = int(st.query_params["uid"])
-        except: pass
-
 # GLOBAL SETUP
 st.markdown(get_permission_js(), unsafe_allow_html=True)
 st.markdown(get_prime_audio_js(), unsafe_allow_html=True)
@@ -100,11 +94,7 @@ def get_callbacks(user_id):
         "toggle_daily": lambda h: (unlog_habit(user_id, h) if h in get_todays_logged_habits(user_id) else log_habit(user_id, h, "Daily Matrix"))
     }
 
-# PERSISTENT LOGIN RECOVERY (One-time check, no reruns here to avoid loops)
-if st.session_state.user_id is None and not st.session_state.logout_triggered:
-    if "uid" in st.query_params:
-        try: st.session_state.user_id = int(st.query_params["uid"])
-        except: pass
+# (Insecure persistent query parameter login recovery removed for security)
 
 # GLOBAL COMPONENTS
 cookie_manager = stx.CookieManager(key="habitbot_cookie_manager")
@@ -141,11 +131,17 @@ with st.sidebar:
             c1.markdown("### 👤")
             c2.markdown(f"**User: {uid}**")
             if st.button("Logout", use_container_width=True):
+                try:
+                    cookie_val = cookie_manager.get("habitbot_v4_session")
+                    if cookie_val:
+                        destroy_session(cookie_val)
+                except:
+                    pass
                 st.session_state.user_id = None
                 st.session_state.logout_triggered = True
                 try: 
-                    cookie_manager.set("habitbot_v4_uid", "None") # Explicitly invalidate
-                    cookie_manager.delete("habitbot_v4_uid")
+                    cookie_manager.set("habitbot_v4_session", "None") # Explicitly invalidate
+                    cookie_manager.delete("habitbot_v4_session")
                 except: pass
                 st.query_params.clear()
                 st.rerun()
@@ -227,6 +223,17 @@ with st.sidebar:
         st.button("☀️ Unfreeze" if "❄️ Freeze Day" in logged else "❄️ Freeze", on_click=cb["toggle_freeze"], use_container_width=True, key="sb_freeze_btn")
         for h in core:
             st.checkbox(h, value=h in logged, key=f"sb_chk_{h}", on_change=cb["toggle_daily"], args=(h,))
+            
+        with st.expander("⚙️ Manage Core Habits"):
+            st.text_input("New Habit", key="new_core_habit_in", placeholder="e.g. 🥦 Eat Veggies")
+            st.button("➕ Add Habit", on_click=cb["add_core"], use_container_width=True)
+            if core:
+                st.markdown("---")
+                st.caption("Active Core Habits:")
+                for i, h in enumerate(core):
+                    col_h, col_del = st.columns([0.8, 0.2])
+                    col_h.write(h)
+                    col_del.button("🗑️", key=f"del_core_{i}", on_click=cb["delete_core"], args=(i,))
     else:
         st.info("👋 Welcome! Please log in.")
 # (End of setup)
@@ -238,10 +245,12 @@ if st.session_state.user_id is None:
     # --- COOKIE RECOVERY ATTEMPT ---
     if not st.session_state.logout_triggered:
         try:
-            cookie_val = cookie_manager.get("habitbot_v4_uid")
+            cookie_val = cookie_manager.get("habitbot_v4_session")
             if cookie_val and cookie_val not in ["None", "null", "", "undefined"]:
-                st.session_state.user_id = int(cookie_val)
-                st.rerun()
+                uid = verify_session(cookie_val)
+                if uid:
+                    st.session_state.user_id = uid
+                    st.rerun()
         except: pass
 
     # Always show the login form if user_id is missing
@@ -258,14 +267,17 @@ if st.session_state.user_id is None:
             if st.button("Login", use_container_width=True):
                 uid = verify_user(u, p)
                 if uid:
-                    st.session_state.user_id = uid
-                    st.session_state.logout_triggered = False # Reset flag
-                    # Save to cookie for 30 days
-                    import datetime as dt
-                    expiry = dt.datetime.now() + dt.timedelta(days=30)
-                    cookie_manager.set("habitbot_v4_uid", str(uid), expires_at=expiry)
-                    st.query_params["uid"] = str(uid) # Add to URL for instant recovery on refresh
-                    st.rerun()
+                    token = create_session(uid)
+                    if token:
+                        st.session_state.user_id = uid
+                        st.session_state.logout_triggered = False # Reset flag
+                        # Save to cookie for 30 days
+                        import datetime as dt
+                        expiry = dt.datetime.now() + dt.timedelta(days=30)
+                        cookie_manager.set("habitbot_v4_session", token, expires_at=expiry)
+                        st.rerun()
+                    else:
+                        st.error("Failed to initialize session.")
                 else:
                     st.error("Invalid username or password.")
         

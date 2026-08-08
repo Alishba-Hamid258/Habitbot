@@ -6,8 +6,13 @@ import streamlit as st
 DB_NAME = ".streamlit/habitbot.db"
 
 def get_connection():
-    conn = sqlite3.connect(DB_NAME, check_same_thread=False)
+    conn = sqlite3.connect(DB_NAME, check_same_thread=False, timeout=30.0)
     conn.row_factory = sqlite3.Row
+    try:
+        conn.execute("PRAGMA journal_mode=WAL;")
+    except sqlite3.OperationalError:
+        # Fallback if WAL is not supported in the SQLite build
+        pass
     return conn
 
 def init_db():
@@ -106,6 +111,17 @@ def init_db():
             date TEXT,
             mode TEXT,
             duration_mins INTEGER,
+            FOREIGN KEY(user_id) REFERENCES users(id)
+        )
+    ''')
+
+    # 8. User Sessions Table
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS user_sessions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            session_token TEXT UNIQUE NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY(user_id) REFERENCES users(id)
         )
     ''')
