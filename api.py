@@ -90,15 +90,32 @@ def call_llm(messages: list[dict], stream: bool = False, image_data: str = None)
                     yield f"\n\n⚠️ Error: {exc}"
             return stream_generator()
         else:
-            with httpx.Client(timeout=60.0) as client:
-                r = client.post(url, json=payload, headers=headers)
-                if r.status_code != 200:
-                    log.error("=== GROQ ERROR %s ===\n%s", r.status_code, r.text[:500])
-                    return f"⚠️ API Error ({r.status_code}): {r.text[:300]}"
-                data = r.json()
-                reply = data["choices"][0]["message"]["content"]
-                log.debug("=== GROQ SUCCESS ===")
-                return reply
+            import time
+            max_retries = 3
+            backoff_sec = 2
+            for attempt in range(max_retries):
+                try:
+                    with httpx.Client(timeout=60.0) as client:
+                        r = client.post(url, json=payload, headers=headers)
+                        if r.status_code == 200:
+                            data = r.json()
+                            reply = data["choices"][0]["message"]["content"]
+                            log.debug("=== GROQ SUCCESS ===")
+                            return reply
+                        elif r.status_code in [429, 500, 502, 503, 504] and attempt < max_retries - 1:
+                            log.warning(f"=== GROQ SERVER ERROR {r.status_code}. Retrying in {backoff_sec}s... (Attempt {attempt+1}/{max_retries}) ===")
+                            time.sleep(backoff_sec)
+                            backoff_sec *= 2
+                        else:
+                            log.error("=== GROQ ERROR %s ===\n%s", r.status_code, r.text[:500])
+                            return f"⚠️ API Error ({r.status_code}): {r.text[:300]}"
+                except Exception as exc:
+                    if attempt < max_retries - 1:
+                        log.warning(f"=== GROQ REQUEST EXCEPTION {exc}. Retrying in {backoff_sec}s... (Attempt {attempt+1}/{max_retries}) ===")
+                        time.sleep(backoff_sec)
+                        backoff_sec *= 2
+                    else:
+                        raise exc
     except Exception as exc:
         log.exception("=== UNEXPECTED ERROR ===")
         msg = f"⚠️ Error: {exc}"
