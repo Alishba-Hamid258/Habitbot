@@ -722,13 +722,28 @@ pwa_html = """
 <script>
     (function() {
         function moveUploader() {
-            // Search inside parent document as well in case of sandboxed iframe
-            const doc = window.parent.document || document;
-            const uploader = doc.querySelector('div[data-testid="stFileUploader"]');
-            const chatInput = doc.querySelector('div[data-testid="stChatInput"]');
-            if (uploader && chatInput) {
-                if (uploader.parentNode !== chatInput) {
-                    chatInput.insertBefore(uploader, chatInput.firstChild);
+            try {
+                // Try parent document (for same-origin iframes)
+                const doc = window.parent.document;
+                const uploader = doc.querySelector('div[data-testid="stFileUploader"]');
+                const chatInput = doc.querySelector('div[data-testid="stChatInput"]');
+                if (uploader && chatInput) {
+                    if (uploader.parentNode !== chatInput) {
+                        chatInput.insertBefore(uploader, chatInput.firstChild);
+                    }
+                }
+            } catch (e) {
+                // If parent document access throws a SecurityError, fallback safely to local document
+                try {
+                    const uploader = document.querySelector('div[data-testid="stFileUploader"]');
+                    const chatInput = document.querySelector('div[data-testid="stChatInput"]');
+                    if (uploader && chatInput) {
+                        if (uploader.parentNode !== chatInput) {
+                            chatInput.insertBefore(uploader, chatInput.firstChild);
+                        }
+                    }
+                } catch (innerErr) {
+                    console.error("Failed to move uploader:", innerErr);
                 }
             }
         }
