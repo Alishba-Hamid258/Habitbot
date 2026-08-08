@@ -22,9 +22,32 @@ def clean_think_tags(text: str) -> str:
     return text.strip()
 
 
+def get_best_gemini_model() -> str:
+    """Query Google AI Studio programmatically to discover the best active Gemini model."""
+    url = f"https://generativelanguage.googleapis.com/v1beta/models?key={Config.GEMINI_API_KEY}"
+    try:
+        with httpx.Client(timeout=10.0) as client:
+            r = client.get(url)
+            if r.status_code == 200:
+                data = r.json()
+                flash_models = [
+                    m["name"].split("/")[-1] for m in data.get("models", [])
+                    if "flash" in m.get("name", "").lower()
+                    and "generateContent" in m.get("supportedGenerationMethods", [])
+                    and "preview" not in m.get("name", "").lower()
+                ]
+                if flash_models:
+                    flash_models.sort(reverse=True)
+                    log.info(f"Successfully discovered active Gemini models. Selected: {flash_models[0]}")
+                    return flash_models[0]
+    except Exception as e:
+        log.error(f"Error discovering Gemini models: {e}")
+    return "gemini-3.5-flash"  # Active 2026 default fallback
+
 def call_gemini(messages: list[dict], image_data: str = None):
-    """Call Google Gemini 1.5 Flash API as a robust free tier vision/text provider."""
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={Config.GEMINI_API_KEY}"
+    """Call Google Gemini API as a robust free tier vision/text provider."""
+    model_id = get_best_gemini_model()
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_id}:generateContent?key={Config.GEMINI_API_KEY}"
     headers = {
         "Content-Type": "application/json"
     }
