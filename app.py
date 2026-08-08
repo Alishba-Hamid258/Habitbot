@@ -6,6 +6,19 @@ import pandas as pd
 import plotly.express as px
 import extra_streamlit_components as stx
 from datetime import datetime
+import sys
+import importlib
+import config
+import api
+
+# Force reload helper modules to bypass Streamlit Cloud cache
+if "config" in sys.modules:
+    importlib.reload(sys.modules["config"])
+if "api" in sys.modules:
+    importlib.reload(sys.modules["api"])
+if "utils" in sys.modules:
+    importlib.reload(sys.modules["utils"])
+
 from api import call_llm
 from config import SYSTEM_PROMPT, ARCHITECT_PROMPT
 from utils import (
