@@ -629,9 +629,17 @@ pwa_html = """
     .block-container { padding-top: 1rem !important; }
     [data-testid="stSidebar"] { background-color: #0E1117 !important; }
     
-    /* Initially hide to prevent layout flicker, display once nested */
+    /* Fallback styles: make standard uploader look nice if not yet nested */
     div[data-testid="stFileUploader"] {
-        display: none !important;
+        padding: 0 !important;
+        margin-bottom: 10px !important;
+    }
+    div[data-testid="stFileUploader"] section {
+        padding: 10px 16px !important;
+        min-height: unset !important;
+        border-radius: 12px !important;
+        border: 1px dashed rgba(255, 255, 255, 0.15) !important;
+        background-color: rgba(255, 255, 255, 0.03) !important;
     }
     
     /* Sleek, Low-Profile File Uploader styled as inline '+' button inside stChatInput */
@@ -649,7 +657,7 @@ pwa_html = """
         margin: 0 !important;
     }
 
-    /* Customize the file uploader dropzone into a circular '+' button */
+    /* Customize the file uploader dropzone into a circular '+' button when nested */
     div[data-testid="stChatInput"] div[data-testid="stFileUploader"] section {
         width: 32px !important;
         height: 32px !important;
@@ -671,12 +679,12 @@ pwa_html = """
         border-color: rgba(255, 255, 255, 0.4) !important;
     }
 
-    /* Hide all text inside the dropzone */
+    /* Hide all text inside the dropzone when nested */
     div[data-testid="stChatInput"] div[data-testid="stFileUploader"] section > div {
         display: none !important;
     }
 
-    /* Inject a '+' sign using pseudo-element */
+    /* Inject a '+' sign using pseudo-element when nested */
     div[data-testid="stChatInput"] div[data-testid="stFileUploader"] section::after {
         content: "+" !important;
         font-size: 20px !important;
@@ -714,8 +722,10 @@ pwa_html = """
 <script>
     (function() {
         function moveUploader() {
-            const uploader = document.querySelector('div[data-testid="stFileUploader"]');
-            const chatInput = document.querySelector('div[data-testid="stChatInput"]');
+            // Search inside parent document as well in case of sandboxed iframe
+            const doc = window.parent.document || document;
+            const uploader = doc.querySelector('div[data-testid="stFileUploader"]');
+            const chatInput = doc.querySelector('div[data-testid="stChatInput"]');
             if (uploader && chatInput) {
                 if (uploader.parentNode !== chatInput) {
                     chatInput.insertBefore(uploader, chatInput.firstChild);
@@ -723,7 +733,7 @@ pwa_html = """
             }
         }
         moveUploader();
-        setInterval(moveUploader, 200);
+        setInterval(moveUploader, 250);
     })();
 </script>
 """
