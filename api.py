@@ -11,6 +11,17 @@ logging.basicConfig(
 )
 log = logging.getLogger(__name__)
 
+import re
+
+def clean_think_tags(text: str) -> str:
+    """Strip out internal <think>...</think> reasoning blocks from Qwen/DeepSeek models."""
+    if not text:
+        return ""
+    text = re.sub(r'<think>.*?</think>', '', text, flags=re.DOTALL)
+    text = re.sub(r'<think>.*$', '', text, flags=re.DOTALL)
+    return text.strip()
+
+
 def call_llm(messages: list[dict], stream: bool = False, image_data: str = None):
     if not Config.GROQ_API_KEY:
         msg = "Error: GROQ_API_KEY missing. Please add it to your Streamlit Secrets."
@@ -101,7 +112,7 @@ def call_llm(messages: list[dict], stream: bool = False, image_data: str = None)
                             data = r.json()
                             reply = data["choices"][0]["message"]["content"]
                             log.debug("=== GROQ SUCCESS ===")
-                            return reply
+                            return clean_think_tags(reply)
                         elif r.status_code in [429, 500, 502, 503, 504] and attempt < max_retries - 1:
                             log.warning(f"=== GROQ SERVER ERROR {r.status_code}. Retrying in {backoff_sec}s... (Attempt {attempt+1}/{max_retries}) ===")
                             time.sleep(backoff_sec)
