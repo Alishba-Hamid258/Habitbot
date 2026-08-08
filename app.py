@@ -412,6 +412,8 @@ if page == "💬 Habit Coach":
             # Sanitize final saved replies against unclosed think tags
             from api import clean_think_tags
             reply = clean_think_tags(reply)
+            if not reply.strip():
+                reply = "⚠️ The AI server timed out or returned an empty response due to temporary capacity constraints. Please try resending your message."
             st.session_state.messages.append({"role": "assistant", "content": reply})
             save_history(uid, st.session_state.messages)
             st.rerun()
