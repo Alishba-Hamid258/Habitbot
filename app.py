@@ -383,7 +383,7 @@ if page == "💬 Habit Coach":
                 with st.expander("📄 View Attached"): st.text(attachment.strip())
             else: st.markdown(content)
 
-    uploaded_file = st.file_uploader("Attach context", type=["png", "jpg", "jpeg", "webp", "pdf", "txt", "md"])
+    uploaded_file = st.file_uploader("Attach context", type=["png", "jpg", "jpeg", "webp", "pdf", "txt", "md"], label_visibility="collapsed")
     if prompt := st.chat_input("Ask about habits…"):
         file_payload = process_uploaded_file(uploaded_file)
         image_data = None
@@ -628,6 +628,43 @@ pwa_html = """
     header[data-testid="stHeader"] { visibility: visible !important; background: rgba(14, 17, 23, 0.9) !important; }
     .block-container { padding-top: 1rem !important; }
     [data-testid="stSidebar"] { background-color: #0E1117 !important; }
+    
+    /* Sleek, Low-Profile File Uploader */
+    div[data-testid="stFileUploader"] {
+        padding: 0 !important;
+        margin-bottom: 10px !important;
+    }
+    div[data-testid="stFileUploader"] section {
+        padding: 10px 16px !important;
+        min-height: unset !important;
+        border-radius: 12px !important;
+        border: 1px dashed rgba(255, 255, 255, 0.15) !important;
+        background-color: rgba(255, 255, 255, 0.03) !important;
+        transition: border-color 0.2s ease, background-color 0.2s ease;
+    }
+    div[data-testid="stFileUploader"] section:hover {
+        border-color: rgba(255, 255, 255, 0.3) !important;
+        background-color: rgba(255, 255, 255, 0.05) !important;
+    }
+    /* Make dropzone layout compact */
+    div[data-testid="stFileUploader"] [data-testid="stUploadFileDropzone"] {
+        padding: 0 !important;
+    }
+    div[data-testid="stFileUploader"] [data-testid="stUploadFileDropzone"] > div {
+        flex-direction: row !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 12px !important;
+    }
+    /* Hide default large upload icon and sub-text to make it low-profile */
+    div[data-testid="stFileUploader"] [data-testid="stUploadFileDropzone"] svg {
+        width: 20px !important;
+        height: 20px !important;
+        margin: 0 !important;
+    }
+    div[data-testid="stFileUploader"] [data-testid="stUploadFileDropzone"] small {
+        display: none !important;
+    }
 </style>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
