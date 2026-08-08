@@ -22,8 +22,84 @@ def clean_think_tags(text: str) -> str:
     return text.strip()
 
 
+def call_gemini(messages: list[dict], image_data: str = None):
+    """Call Google Gemini 1.5 Flash API as a robust free tier vision/text provider."""
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={Config.GEMINI_API_KEY}"
+    headers = {
+        "Content-Type": "application/json"
+    }
+    
+    system_prompt = ""
+    contents = []
+    
+    for msg in messages:
+        role = msg.get("role", "user")
+        content = msg.get("content", "")
+        
+        if role == "system":
+            system_prompt = clean_think_tags(content)
+            continue
+            
+        mapped_role = "model" if role == "assistant" else "user"
+        
+        if isinstance(content, list):
+            texts = [c["text"] for c in content if c.get("type") == "text"]
+            content = " ".join(texts) if texts else ""
+            
+        contents.append({
+            "role": mapped_role,
+            "parts": [{"text": clean_think_tags(content)}]
+        })
+        
+    # Inject image attachment to the last user message block if present
+    if image_data and contents:
+        for i in range(len(contents) - 1, -1, -1):
+            if contents[i]["role"] == "user":
+                contents[i]["parts"].append({
+                    "inline_data": {
+                        "mime_type": "image/jpeg",
+                        "data": image_data
+                    }
+                })
+                break
+                
+    payload = {
+        "contents": contents
+    }
+    
+    if system_prompt:
+        payload["systemInstruction"] = {
+            "parts": [{"text": system_prompt}]
+        }
+        
+    try:
+        with httpx.Client(timeout=60.0) as client:
+            r = client.post(url, json=payload, headers=headers)
+            if r.status_code == 200:
+                data = r.json()
+                try:
+                    reply = data["candidates"][0]["content"]["parts"][0]["text"]
+                    return clean_think_tags(reply)
+                except Exception as e:
+                    log.error(f"Error parsing Gemini response: {e}. Raw response: {data}")
+                    return "⚠️ Error parsing Gemini response."
+            else:
+                log.error(f"=== GEMINI ERROR {r.status_code} ===\n{r.text[:500]}")
+                return f"⚠️ Gemini API Error ({r.status_code}): {r.text[:300]}"
+    except Exception as exc:
+        log.exception("=== GEMINI UNEXPECTED ERROR ===")
+        return f"⚠️ Gemini Connection Error: {exc}"
+
 def call_llm(messages: list[dict], stream: bool = False, image_data: str = None):
+    # Route vision / image requests to Google Gemini if API Key is configured
+    if image_data and getattr(Config, "GEMINI_API_KEY", None):
+        return call_gemini(messages, image_data)
+
     if not Config.GROQ_API_KEY:
+        # Fallback to Gemini if Groq is missing but Gemini key is available
+        if getattr(Config, "GEMINI_API_KEY", None):
+            return call_gemini(messages, image_data)
+            
         msg = "Error: GROQ_API_KEY missing. Please add it to your Streamlit Secrets."
         if stream:
             def err_gen(): yield msg
