@@ -677,22 +677,8 @@ pwa_html = """
     }
     
     header[data-testid="stHeader"] { visibility: visible !important; background: rgba(14, 17, 23, 0.9) !important; }
-    .block-container { padding-top: 8rem !important; }
+    .block-container { padding-top: 1rem !important; }
     [data-testid="stSidebar"] { background-color: #0E1117 !important; }
-    
-    /* Make the top navigation bar container fixed at the top */
-    div[data-testid="stHorizontalBlock"]:first-of-type {
-        position: fixed !important;
-        top: 2.875rem !important; /* sits directly below Streamlit's header bar */
-        width: 100% !important;
-        max-width: 730px !important; /* aligns with Streamlit's block container width */
-        background-color: #0E1117 !important;
-        z-index: 99999 !important;
-        padding-top: 12px !important;
-        padding-bottom: 12px !important;
-        margin-top: 0px !important;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
-    }
     
     /* Fallback styles: make standard uploader look nice if not yet nested */
     div[data-testid="stFileUploader"] {
