@@ -663,8 +663,24 @@ elif page == "📚 Library":
 
     with lib_tab3:
         st.markdown("### 🎬 Custom Player")
-        st.info("💡 **Persistent Playback Enabled!** To keep your custom music or video playing continuously while you navigate across tabs (like Coach or Tasks), the Custom Player has been integrated into the sidebar on the left!")
-        st.caption("Expand **🎵 Custom Media Player** in the sidebar to paste your YouTube link and control playback.")
+        st.caption("Paste a YouTube URL below — it will play here **and** keep playing in the sidebar when you switch tabs!")
+        
+        custom_url = st.text_input(
+            "YouTube URL",
+            value=st.session_state.lib_custom_url,
+            placeholder="https://www.youtube.com/watch?v=...",
+            key="lib_custom_player_input"
+        )
+        # Update shared session state so sidebar player picks it up
+        st.session_state.lib_custom_url = custom_url
+
+        if st.session_state.lib_custom_url:
+            if "youtube.com" in st.session_state.lib_custom_url or "youtu.be" in st.session_state.lib_custom_url:
+                with st.container(border=True):
+                    st.video(st.session_state.lib_custom_url)
+                    st.success("✅ Also playing in the sidebar — switch to any tab and it keeps going!")
+            else:
+                st.warning("Please enter a valid YouTube link.")
 # FINAL PWA CSS & META
 pwa_html = """
 <style>
