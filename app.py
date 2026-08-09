@@ -653,6 +653,17 @@ elif page == "📓 Logbook":
         st.write("Export your habits and reflections to an Excel file.")
         if st.button("Prepare Audit File", use_container_width=True):
             with st.spinner("Compiling your legendary journey..."):
+                # Guarantee media_history table exists before export (bypasses all module caching)
+                try:
+                    _conn = get_connection()
+                    _conn.execute('''CREATE TABLE IF NOT EXISTS media_history (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        user_id INTEGER, date TEXT, url TEXT, title TEXT,
+                        FOREIGN KEY(user_id) REFERENCES users(id))''')
+                    _conn.commit()
+                    _conn.close()
+                except Exception:
+                    pass
                 audit_data = generate_life_audit(uid)
                 st.download_button(
                     label="📥 Download Life Audit (.xlsx)",
