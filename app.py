@@ -540,9 +540,6 @@ with tab_coach:
         
         st.markdown("---")
         
-        # Check for pending prompt from chips
-        chip_prompt = st.session_state.pop("chip_prompt", None)
-        
         # 1. Main Chat Container (Always placed ABOVE input widgets)
         chat_container = st.container()
         
@@ -558,28 +555,25 @@ with tab_coach:
                         with st.expander("📄 View Attached"): st.text(attachment.strip())
                     else: st.markdown(content)
 
-            # 2. Interactive Quick-Prompt Chips (Only shown on empty chat and when no chip is active)
-            if len(st.session_state.messages) <= 1 and not chip_prompt:
+            # 2. Interactive Quick-Prompt Chips (Only shown when starting a fresh chat)
+            prompt_from_chip = None
+            if len(st.session_state.messages) <= 1:
                 st.caption("💡 Choose a quick topic or type your own question below:")
                 chip_cols = st.columns(4)
                 if chip_cols[0].button("⚡ Plan My Day", use_container_width=True, key="chip_btn_1"):
-                    st.session_state.chip_prompt = "Help me plan an ultra-productive day using time-blocking and habit stacking."
-                    st.rerun()
+                    prompt_from_chip = "Help me plan an ultra-productive day using time-blocking and habit stacking."
                 if chip_cols[1].button("🧠 Beat Procrastination", use_container_width=True, key="chip_btn_2"):
-                    st.session_state.chip_prompt = "I'm procrastinating on an important task. Guide me through the 2-minute rule to start immediately."
-                    st.rerun()
+                    prompt_from_chip = "I'm procrastinating on an important task. Guide me through the 2-minute rule to start immediately."
                 if chip_cols[2].button("💪 Morning Routine", use_container_width=True, key="chip_btn_3"):
-                    st.session_state.chip_prompt = "Design an energizing 30-minute morning routine based on behavioral science."
-                    st.rerun()
+                    prompt_from_chip = "Design an energizing 30-minute morning routine based on behavioral science."
                 if chip_cols[3].button("🎯 Habit Audit", use_container_width=True, key="chip_btn_4"):
-                    st.session_state.chip_prompt = "Audit my daily habits and tell me which smallest adjustment will compound the most."
-                    st.rerun()
+                    prompt_from_chip = "Audit my daily habits and tell me which smallest adjustment will compound the most."
                 st.markdown("")
 
         # 3. Input Controls (Always placed BELOW chat_container at the bottom)
         uploaded_file = st.file_uploader("Attach context", type=["png", "jpg", "jpeg", "webp", "pdf", "txt", "md"], label_visibility="collapsed")
         chat_input_val = st.chat_input("Ask about habits…")
-        prompt = chip_prompt or chat_input_val
+        prompt = prompt_from_chip or chat_input_val
         
         if prompt:
             file_payload = process_uploaded_file(uploaded_file)
@@ -598,10 +592,11 @@ with tab_coach:
                     st.session_state.messages.append({"role": "user", "content": final_prompt})
                     st.session_state.messages.append({"role": "assistant", "content": refusal})
                     save_history(uid, st.session_state.messages)
+                    st.rerun()
                 else:
-                    st.session_state.messages.append({"role": "user", "content": final_prompt})
                     habit_summary = get_habit_context(uid)
                     dynamic_messages = st.session_state.messages.copy()
+                    dynamic_messages.append({"role": "user", "content": final_prompt})
                     dynamic_messages[0] = {"role": "system", "content": f"{SYSTEM_PROMPT}\n\nPROGRESS:\n{habit_summary}"}
                     with st.chat_message("assistant", avatar="🤖"):
                         llm_response = call_llm(dynamic_messages, stream=True, image_data=image_data)
@@ -616,8 +611,10 @@ with tab_coach:
                     reply = clean_think_tags(reply)
                     if not reply.strip():
                         reply = "⚠️ The AI server timed out or returned an empty response due to temporary capacity constraints. Please try resending your message."
+                    st.session_state.messages.append({"role": "user", "content": final_prompt})
                     st.session_state.messages.append({"role": "assistant", "content": reply})
                     save_history(uid, st.session_state.messages)
+                    st.rerun()
 
 # -------------------------------------------------------------
 # TAB 2: ANALYTICS
