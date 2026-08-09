@@ -600,7 +600,6 @@ with tab_coach:
                     reply = "⚠️ The AI server timed out or returned an empty response due to temporary capacity constraints. Please try resending your message."
                 st.session_state.messages.append({"role": "assistant", "content": reply})
                 save_history(uid, st.session_state.messages)
-                st.rerun()
 
 # -------------------------------------------------------------
 # TAB 2: ANALYTICS
