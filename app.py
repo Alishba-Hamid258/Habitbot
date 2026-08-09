@@ -91,6 +91,7 @@ if "timer_mode" not in st.session_state: st.session_state.timer_mode = "🍅 Foc
 if "timer_active" not in st.session_state: st.session_state.timer_active = False
 if "timer_seconds" not in st.session_state: st.session_state.timer_seconds = 1500
 if "timer_max_seconds" not in st.session_state: st.session_state.timer_max_seconds = 1500
+if "sb_adj_mins" not in st.session_state: st.session_state.sb_adj_mins = 25
 if "lib_custom_url" not in st.session_state: st.session_state.lib_custom_url = ""
 
 # GLOBAL SETUP
@@ -176,29 +177,35 @@ with st.sidebar:
             if st.button("🔔 Test Chime", use_container_width=True):
                 st.markdown(get_chime_html(), unsafe_allow_html=True)
                 st.toast("Chime triggered!", icon="🎵")
-        # Mode Selection
+        # Mode Selection & Callbacks
+        def update_custom_time():
+            mins = st.session_state.sb_adj_mins
+            st.session_state.timer_seconds = mins * 60
+            st.session_state.timer_max_seconds = mins * 60
+            st.session_state.timer_active = False
+
         m_cols = st.columns(3)
         if m_cols[0].button("🎯", help="Focus (25m)"): 
             st.session_state.timer_seconds = 1500
             st.session_state.timer_max_seconds = 1500
+            st.session_state.sb_adj_mins = 25
             st.session_state.timer_active = False
             st.rerun()
         if m_cols[1].button("☕", help="Short Break (5m)"): 
             st.session_state.timer_seconds = 300
             st.session_state.timer_max_seconds = 300
+            st.session_state.sb_adj_mins = 5
             st.session_state.timer_active = False
             st.rerun()
         if m_cols[2].button("🧘", help="Long Break (15m)"): 
             st.session_state.timer_seconds = 900
             st.session_state.timer_max_seconds = 900
+            st.session_state.sb_adj_mins = 15
             st.session_state.timer_active = False
             st.rerun()
 
         # Custom Adjustment
-        adj_mins = st.number_input("Minutes", value=max(1, st.session_state.timer_seconds // 60), min_value=1, max_value=120, step=1, key="sb_adj_mins")
-        if adj_mins * 60 != st.session_state.timer_seconds and not st.session_state.timer_active:
-            st.session_state.timer_seconds = adj_mins * 60
-            st.session_state.timer_max_seconds = adj_mins * 60
+        st.number_input("Minutes", min_value=1, max_value=120, step=1, key="sb_adj_mins", on_change=update_custom_time)
 
         # Fragment for Countdown
         @st.fragment(run_every="1s")
