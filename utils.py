@@ -636,6 +636,94 @@ def get_user_xp_and_level(user_id):
         "tasks_xp": tasks_xp
     }
 
+def get_username(user_id):
+    conn = get_connection()
+    c = conn.cursor()
+    c.execute("SELECT username FROM users WHERE id = ?", (user_id,))
+    row = c.fetchone()
+    conn.close()
+    return row[0] if row else f"User {user_id}"
+
+def get_admin_platform_stats():
+    conn = get_connection()
+    c = conn.cursor()
+    
+    # 1. Total users
+    c.execute("SELECT id, username, created_at FROM users ORDER BY id ASC")
+    users = c.fetchall()
+    total_users = len(users)
+    
+    # 2. Total habits logged across platform
+    try:
+        c.execute("SELECT COUNT(*) FROM habits_log")
+        total_habits = c.fetchone()[0] or 0
+    except Exception:
+        total_habits = 0
+    
+    # 3. Total focus minutes logged
+    try:
+        c.execute("SELECT SUM(duration_mins) FROM focus_sessions")
+        total_focus_mins = c.fetchone()[0] or 0
+    except Exception:
+        total_focus_mins = 0
+    
+    # 4. Total tasks completed
+    try:
+        c.execute("SELECT COUNT(*) FROM completed_tasks_history")
+        total_tasks = c.fetchone()[0] or 0
+    except Exception:
+        total_tasks = 0
+        
+    # 5. Total reflections
+    try:
+        c.execute("SELECT COUNT(*) FROM reflections")
+        total_reflections = c.fetchone()[0] or 0
+    except Exception:
+        total_reflections = 0
+    
+    # 6. Total chat sessions
+    try:
+        c.execute("SELECT COUNT(*) FROM chat_archives")
+        total_chat_archives = c.fetchone()[0] or 0
+    except Exception:
+        total_chat_archives = 0
+    
+    # 7. User table dataframe
+    user_rows = []
+    for u in users:
+        u_id, u_name, u_created = u[0], u[1], u[2]
+        try:
+            c.execute("SELECT COUNT(*) FROM habits_log WHERE user_id = ?", (u_id,))
+            u_habits = c.fetchone()[0] or 0
+        except Exception:
+            u_habits = 0
+            
+        try:
+            c.execute("SELECT SUM(duration_mins) FROM focus_sessions WHERE user_id = ?", (u_id,))
+            u_focus = c.fetchone()[0] or 0
+        except Exception:
+            u_focus = 0
+            
+        user_rows.append({
+            "User ID": u_id,
+            "Username": u_name,
+            "Joined Date": str(u_created)[:10] if u_created else "N/A",
+            "Habits Checked": u_habits,
+            "Focus Mins": int(u_focus or 0)
+        })
+        
+    conn.close()
+    
+    return {
+        "total_users": total_users,
+        "total_habits": total_habits,
+        "total_focus_mins": int(total_focus_mins or 0),
+        "total_tasks": total_tasks,
+        "total_reflections": total_reflections,
+        "total_chat_archives": total_chat_archives,
+        "users_df": pd.DataFrame(user_rows)
+    }
+
 def get_habit_stats(user_id):
     conn = get_connection()
     df = pd.read_sql_query("SELECT date, habit, category FROM habits_log WHERE user_id = ?", conn, params=(user_id,))

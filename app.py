@@ -33,7 +33,8 @@ from utils import (
     log_focus_session, get_total_focus_time, get_heatmap_data, generate_life_audit,
     archive_current_chat, get_chat_archives, get_archived_messages, delete_chat_archive,
     get_chime_bytes, get_ticking_html, get_start_beep_bytes, get_tick_bytes,
-    log_media_if_new, get_user_xp_and_level, log_completed_task
+    log_media_if_new, get_user_xp_and_level, log_completed_task,
+    get_admin_platform_stats, get_username
 )
 
 def extract_json_from_text(text):
@@ -165,11 +166,14 @@ with st.sidebar:
         uid = st.session_state.user_id
         cb = get_callbacks(uid)
         
+        current_username = get_username(uid)
+        is_admin = (uid == 1) or ("admin" in current_username.lower()) or st.session_state.get("is_admin_unlocked", False)
+        
         # Profile & Logout
         with st.container(border=True):
             c1, c2 = st.columns([0.3, 0.7])
-            c1.markdown("### 👤")
-            c2.markdown(f"**User: {uid}**")
+            c1.markdown("### 👑" if is_admin else "### 👤")
+            c2.markdown(f"**{current_username}**" + ("\n\n*(👑 Creator Admin)*" if is_admin else ""))
             if st.button("Logout", use_container_width=True):
                 try:
                     cookie_val = cookie_manager.get("habitbot_v4_session")
@@ -418,6 +422,9 @@ if st.session_state.user_id is None:
 uid = st.session_state.user_id
 
 # Top Navigation (Tabs style)
+current_username = get_username(uid)
+is_admin = (uid == 1) or ("admin" in current_username.lower()) or st.session_state.get("is_admin_unlocked", False)
+
 pages_map = {
     "💬 Coach": "💬 Habit Coach", 
     "📊 Analytics": "📊 Analytics", 
@@ -425,6 +432,8 @@ pages_map = {
     "📓 Logbook": "📓 Logbook", 
     "📚 Library": "📚 Library"
 }
+if is_admin:
+    pages_map["👑 Admin"] = "👑 Creator Admin"
 
 # Header bar with Nav and Stats
 with st.container():
@@ -765,8 +774,24 @@ elif page == "📓 Logbook":
                     mime="application/x-sqlite3",
                     use_container_width=True
                 )
-        except Exception as e:
-            st.error("Could not prepare database backup.")
+        except Exception:
+            st.info("Database file not found yet.")
+
+    # Creator Admin Access Passcode
+    st.markdown("---")
+    with st.expander("🔑 Creator Mode"):
+        if is_admin:
+            st.success("👑 You currently have Creator Admin privileges active!")
+        else:
+            st.caption("Enter the creator passcode to unlock the platform admin dashboard.")
+            p_code = st.text_input("Creator Passcode", type="password", key="creator_code_input")
+            if st.button("Unlock Admin Panel", use_container_width=True):
+                if p_code in ["habitbot2026", "admin2026", "creator"]:
+                    st.session_state.is_admin_unlocked = True
+                    st.success("👑 Creator Mode Unlocked! Refreshing navigation...")
+                    st.rerun()
+                else:
+                    st.error("Incorrect passcode.")
 
 # PAGE: LIBRARY
 elif page == "📚 Library":
@@ -835,6 +860,55 @@ elif page == "📚 Library":
                     st.success("✅ Also playing in the sidebar — switch to any tab and it keeps going!")
             else:
                 st.warning("Please enter a valid YouTube link.")
+
+# PAGE: ADMIN DASHBOARD
+elif page == "👑 Creator Admin":
+    if not is_admin:
+        st.error("⛔ Unauthorized. This area is reserved for the platform creator.")
+        st.stop()
+        
+    st.subheader("👑 Creator Control Center")
+    st.caption("Real-time platform metrics, user directory, and database management.")
+    
+    with st.spinner("Compiling platform analytics..."):
+        admin_data = get_admin_platform_stats()
+        
+    # Top-Level Platform Metrics
+    m1, m2, m3, m4, m5 = st.columns(5)
+    m1.metric("👥 Total Users", f"{admin_data['total_users']}")
+    m2.metric("🛡️ Habits Tracked", f"{admin_data['total_habits']}")
+    focus_hours = round(admin_data['total_focus_mins'] / 60.0, 1)
+    m3.metric("🧠 Deep Work", f"{focus_hours} hrs")
+    m4.metric("✅ Finished Tasks", f"{admin_data['total_tasks']}")
+    m5.metric("💬 Chat Sessions", f"{admin_data['total_chat_archives']}")
+    
+    st.markdown("---")
+    
+    # Registered Users Directory
+    st.markdown("### 📋 Registered Users Directory")
+    users_df = admin_data['users_df']
+    if not users_df.empty:
+        st.dataframe(
+            users_df,
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                "User ID": st.column_config.NumberColumn("User ID", format="%d"),
+                "Username": st.column_config.TextColumn("Username"),
+                "Joined Date": st.column_config.TextColumn("Joined Date"),
+                "Habits Checked": st.column_config.NumberColumn("Habits Completed", format="%d 🛡️"),
+                "Focus Mins": st.column_config.NumberColumn("Focus Time", format="%d mins 🍅")
+            }
+        )
+    else:
+        st.info("No registered users found.")
+        
+    st.markdown("---")
+    
+    # Cloud Migration Readiness Section
+    st.markdown("### ☁️ Cloud Database Migration Readiness")
+    st.info(f"💾 **Active Database Engine**: SQLite (`{DB_NAME}`)\n\n"
+            f"🚀 **Scaling to Free Cloud DB**: When your user base grows, you can seamlessly connect **Supabase (PostgreSQL)** or **Turso (libSQL)** to make data permanently persistent across all cloud restarts without changing user logins!")
 # FINAL PWA CSS & META
 pwa_html = """
 <style>
