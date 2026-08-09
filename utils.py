@@ -30,6 +30,13 @@ def is_on_topic(prompt: str, history: list = None) -> bool:
     if any(prompt_lower.startswith(kw) or f" {kw} " in f" {prompt_lower} " for kw in conversational_keywords):
         return True
 
+    # Allow questions about AI version, identity, model, engine, or system information
+    identity_keywords = [
+        "ai version", "are you", "model", "groq", "gemini", "gpt", "what version", "who are you", "what engine"
+    ]
+    if any(kw in prompt_lower for kw in identity_keywords):
+        return True
+
     productivity_keywords = [
         # Habits & Routines (handles typos like habbit, habbits, routines)
         "habit", "habbi", "hab", "routin", "rout", "morn", "even", "daily",
