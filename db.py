@@ -13,6 +13,23 @@ def get_connection():
     except sqlite3.OperationalError:
         # Fallback if WAL is not supported in the SQLite build
         pass
+        
+    # Auto-ensure media_history table exists to bypass Streamlit module caching issues
+    try:
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS media_history (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER,
+                date TEXT,
+                url TEXT,
+                title TEXT,
+                FOREIGN KEY(user_id) REFERENCES users(id)
+            )
+        ''')
+        conn.commit()
+    except Exception:
+        pass
+        
     return conn
 
 def init_db():
