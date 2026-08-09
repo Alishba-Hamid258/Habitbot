@@ -29,7 +29,7 @@ from utils import (
     process_uploaded_file, get_notification_js, get_permission_js,
     log_focus_session, get_total_focus_time, get_heatmap_data, generate_life_audit,
     archive_current_chat, get_chat_archives, get_archived_messages, delete_chat_archive,
-    get_chime_bytes, get_ticking_html, get_start_beep_bytes
+    get_chime_bytes, get_ticking_html, get_start_beep_bytes, get_tick_bytes
 )
 
 def extract_json_from_text(text):
@@ -217,6 +217,10 @@ with st.sidebar:
 
             if st.session_state.timer_active and st.session_state.timer_seconds > 0:
                 st.session_state.timer_seconds -= 1
+                # Play tick in the final 5 seconds (5, 4, 3, 2, 1)
+                if 1 <= st.session_state.timer_seconds <= 5:
+                    st.audio(get_tick_bytes(), format="audio/wav", autoplay=True)
+                
                 if st.session_state.timer_seconds == 0:
                     st.session_state.timer_active = False
                     st.toast("⏰ Time's up!", icon="🔔")
@@ -656,9 +660,12 @@ elif page == "📚 Library":
 # FINAL PWA CSS & META
 pwa_html = """
 <style>
-    /* Hide all Streamlit audio player widgets from the UI */
-    div[data-testid="stAudio"] {
+    /* Hide all Streamlit audio player widgets and their element containers completely */
+    [data-testid="stAudio"], div[data-testid="element-container"]:has(audio), audio {
         display: none !important;
+        height: 0px !important;
+        margin: 0px !important;
+        padding: 0px !important;
     }
     
     header[data-testid="stHeader"] { visibility: visible !important; background: rgba(14, 17, 23, 0.9) !important; }

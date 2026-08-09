@@ -753,3 +753,23 @@ def get_chime_bytes():
             
     buf.seek(0)
     return buf.read()
+
+def get_tick_bytes():
+    # Short sharp clock tick sound (1500Hz) for 0.02s
+    import math, struct, wave
+    from io import BytesIO
+    buf = BytesIO()
+    with wave.open(buf, 'wb') as wav:
+        wav.setnchannels(1)
+        wav.setsampwidth(1)
+        wav.setframerate(8000)
+        num_samples = int(0.02 * 8000)
+        for i in range(num_samples):
+            t = i / 8000
+            envelope = 1.0
+            if t > 0.005:
+                envelope = (0.02 - t) / 0.015
+            val = int(128 + 100 * envelope * math.sin(2 * math.pi * 1500 * t))
+            wav.writeframesraw(struct.pack('B', val))
+    buf.seek(0)
+    return buf.read()
