@@ -426,22 +426,6 @@ def get_total_focus_time(user_id, period="today"):
     conn.close()
     return row[0] if row[0] else 0
 
-def generate_life_audit(user_id):
-    conn = get_connection()
-    tables = {
-        "Habits": "SELECT date, habit, category FROM habits_log WHERE user_id = ?",
-        "Focus": "SELECT date, mode, duration_mins FROM focus_sessions WHERE user_id = ?",
-        "Tasks": "SELECT task, priority, time, done FROM todos WHERE user_id = ?",
-        "Reflections": "SELECT date, went_well, friction FROM reflections WHERE user_id = ?",
-        "Chat History": "SELECT timestamp, session_name, role, content FROM chat_archives WHERE user_id = ?"
-    }
-    output = io.BytesIO()
-    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        for sheet_name, query in tables.items():
-            df = pd.read_sql_query(query, conn, params=(user_id,))
-            df.to_excel(writer, sheet_name=sheet_name, index=False)
-    conn.close()
-    return output.getvalue()
 
 # ================================
 # FILE PROCESSING (VISION & DOCS)
@@ -661,7 +645,24 @@ def log_media_if_new(user_id, url):
     st.session_state.last_logged_url = url
 
 def generate_life_audit(user_id):
+    import sqlite3 as _sqlite3
     conn = get_connection()
+    # Ensure media_history table exists (inline creation to bypass any caching)
+    try:
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS media_history (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER,
+                date TEXT,
+                url TEXT,
+                title TEXT,
+                FOREIGN KEY(user_id) REFERENCES users(id)
+            )
+        ''')
+        conn.commit()
+    except Exception:
+        pass
+
     tables = {
         "Habits": "SELECT date, habit, category FROM habits_log WHERE user_id = ?",
         "Focus": "SELECT date, mode, duration_mins FROM focus_sessions WHERE user_id = ?",
@@ -673,7 +674,10 @@ def generate_life_audit(user_id):
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
         for sheet_name, query in tables.items():
-            df = pd.read_sql_query(query, conn, params=(user_id,))
+            try:
+                df = pd.read_sql_query(query, conn, params=(user_id,))
+            except Exception:
+                df = pd.DataFrame()  # Empty sheet if table doesn't exist
             df.to_excel(writer, sheet_name=sheet_name, index=False)
     conn.close()
     return output.getvalue()
