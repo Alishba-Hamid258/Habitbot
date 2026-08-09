@@ -477,36 +477,9 @@ uid = st.session_state.user_id
 current_username = get_username(uid)
 is_admin = (uid == 1) or ("admin" in current_username.lower()) or st.session_state.get("is_admin_unlocked", False)
 
-pages_map = {
-    "💬 Coach": "💬 Habit Coach", 
-    "📊 Analytics": "📊 Analytics", 
-    "✅ Tasks": "✅ To-Do List", 
-    "📓 Logbook": "📓 Logbook", 
-    "📚 Library": "📚 Library"
-}
-
-# Header bar with Nav and Stats
-with st.container():
-    cols = st.columns([0.6, 0.4])
-    with cols[0]:
-        def _on_nav_change():
-            sel = st.session_state.get("nav_selection")
-            if sel and sel in pages_map:
-                st.session_state.current_page = pages_map[sel]
-
-        st.segmented_control(
-            "Navigation", 
-            options=list(pages_map.keys()), 
-            key="nav_selection",
-            on_change=_on_nav_change,
-            label_visibility="collapsed"
-        )
-    
-    with cols[1]:
-        xp_info = get_user_xp_and_level(uid)
-        st.markdown(f"<p style='text-align:right; margin:0;'>🎮 <b>Lv.{xp_info['level']}</b> ({xp_info['total_xp']} XP) | 🔥 {get_current_streak(uid)}d | 🎯 {get_consistency_score(uid)}%</p>", unsafe_allow_html=True)
-
-st.markdown("---")
+# Header bar with Stats
+xp_info = get_user_xp_and_level(uid)
+st.markdown(f"<p style='text-align:right; margin:0 0 10px 0;'>🎮 <b>Lv.{xp_info['level']}</b> ({xp_info['total_xp']} XP) &nbsp;|&nbsp; 🔥 {get_current_streak(uid)}d &nbsp;|&nbsp; 🎯 {get_consistency_score(uid)}%</p>", unsafe_allow_html=True)
 
 # Milestone & Action Celebrations
 if st.session_state.pop("trigger_snow", False):
@@ -518,15 +491,21 @@ if st.session_state.pop("trigger_all_habits_balloons", False):
     st.balloons()
     st.toast("🎉 Perfect Day! You've completed ALL core habits today! (+XP Earned)", icon="🏆")
 
-# PAGE DISPATCHER
-page = st.session_state.current_page
 # Re-load history whenever the active user changes (prevents cross-user bleed)
 if "messages" not in st.session_state or st.session_state.get("_messages_loaded_for") != uid:
     saved = load_history(uid)
     st.session_state.messages = saved if saved else [{"role": "system", "content": SYSTEM_PROMPT}]
     st.session_state._messages_loaded_for = uid
 
-if page == "💬 Habit Coach":
+# Native Tabs — Instant client-side tab switching with ZERO network delay and ZERO element bleed
+tab_coach, tab_analytics, tab_tasks, tab_logbook, tab_library = st.tabs([
+    "💬 Coach", "📊 Analytics", "✅ Tasks", "📓 Logbook", "📚 Library"
+])
+
+# -------------------------------------------------------------
+# TAB 1: HABIT COACH
+# -------------------------------------------------------------
+with tab_coach:
     if "view_archive" not in st.session_state: st.session_state.view_archive = None
 
     if st.session_state.view_archive:
@@ -537,95 +516,96 @@ if page == "💬 Habit Coach":
         col_title.markdown("### 📜 Archived Session")
         for m in st.session_state.view_archive[1:]:
             with st.chat_message(m["role"]): st.markdown(m["content"])
-        st.stop()
-
-    col1, col2 = st.columns([0.7, 0.3])
-    col1.markdown("### 💬 Habit Coach")
-    if col2.button("➕ New Chat", use_container_width=True):
-        archive_current_chat(uid, st.session_state.messages)
-        st.session_state.messages = [{"role": "system", "content": SYSTEM_PROMPT}]
-        save_history(uid, st.session_state.messages)
-        st.rerun()
-
-    with st.expander("📜 Previous Sessions Archive"):
-        archives = get_chat_archives(uid)
-        if archives:
-            for sid, name, ts in archives:
-                arch_col, del_col = st.columns([0.85, 0.15])
-                if arch_col.button(f"📄 {ts} | {name}", key=f"arch_{sid}", use_container_width=True):
-                    st.session_state.view_archive = get_archived_messages(uid, sid)
-                    st.rerun()
-                if del_col.button("🗑️", key=f"del_{sid}"):
-                    delete_chat_archive(uid, sid)
-                    st.rerun()
-        else: st.write("No archived sessions yet.")
-    
-    st.markdown("---")
-    for m in st.session_state.messages[1:]:
-        avatar = "🤖" if m["role"] == "assistant" else "👤"
-        with st.chat_message(m["role"], avatar=avatar):
-            from utils import _safe_content
-            content = _safe_content(m.get("content", ""))
-            if "[FILE ATTACHMENT]:" in content:
-                main_text, attachment = content.split("[FILE ATTACHMENT]:", 1)
-                st.markdown(main_text.strip())
-                with st.expander("📄 View Attached"): st.text(attachment.strip())
-            else: st.markdown(content)
-
-    # Interactive Quick-Prompt Chips
-    prompt_to_send = None
-    if len(st.session_state.messages) <= 1:
-        st.caption("💡 Choose a quick topic or type your own question below:")
-        chip_cols = st.columns(4)
-        if chip_cols[0].button("⚡ Plan My Day", use_container_width=True):
-            prompt_to_send = "Help me plan an ultra-productive day using time-blocking and habit stacking."
-        if chip_cols[1].button("🧠 Beat Procrastination", use_container_width=True):
-            prompt_to_send = "I'm procrastinating on an important task. Guide me through the 2-minute rule to start immediately."
-        if chip_cols[2].button("💪 Morning Routine", use_container_width=True):
-            prompt_to_send = "Design an energizing 30-minute morning routine based on behavioral science."
-        if chip_cols[3].button("🎯 Habit Audit", use_container_width=True):
-            prompt_to_send = "Audit my daily habits and tell me which smallest adjustment will compound the most."
-        st.markdown("")
-
-    uploaded_file = st.file_uploader("Attach context", type=["png", "jpg", "jpeg", "webp", "pdf", "txt", "md"], label_visibility="collapsed")
-    chat_input_val = st.chat_input("Ask about habits…")
-    prompt = prompt_to_send or chat_input_val
-    if prompt:
-        file_payload = process_uploaded_file(uploaded_file)
-        image_data = None
-        final_prompt = prompt
-        if file_payload:
-            if file_payload["type"] == "image": image_data = file_payload["data"]
-            else: final_prompt = f"{prompt}\n\n[FILE ATTACHMENT]:\n{file_payload['data']}"
-        with st.chat_message("user", avatar="👤"): st.markdown(prompt)
-        if file_payload is None and not is_on_topic(prompt, st.session_state.messages):
-            refusal = "I specialized in habits and productivity."
-            with st.chat_message("assistant", avatar="🤖"): st.markdown(refusal)
-            st.session_state.messages.append({"role": "assistant", "content": refusal})
-        else:
-            st.session_state.messages.append({"role": "user", "content": final_prompt})
-            habit_summary = get_habit_context(uid)
-            dynamic_messages = st.session_state.messages.copy()
-            dynamic_messages[0] = {"role": "system", "content": f"{SYSTEM_PROMPT}\n\nPROGRESS:\n{habit_summary}"}
-            with st.chat_message("assistant", avatar="🤖"):
-                llm_response = call_llm(dynamic_messages, stream=True, image_data=image_data)
-                if not isinstance(llm_response, str):
-                    reply = st.write_stream(llm_response)
-                else:
-                    st.markdown(llm_response)
-                    reply = llm_response
-            
-            # Sanitize final saved replies against unclosed think tags
-            from api import clean_think_tags
-            reply = clean_think_tags(reply)
-            if not reply.strip():
-                reply = "⚠️ The AI server timed out or returned an empty response due to temporary capacity constraints. Please try resending your message."
-            st.session_state.messages.append({"role": "assistant", "content": reply})
+    else:
+        col1, col2 = st.columns([0.7, 0.3])
+        col1.markdown("### 💬 Habit Coach")
+        if col2.button("➕ New Chat", use_container_width=True):
+            archive_current_chat(uid, st.session_state.messages)
+            st.session_state.messages = [{"role": "system", "content": SYSTEM_PROMPT}]
             save_history(uid, st.session_state.messages)
             st.rerun()
 
-# PAGE: ANALYTICS
-elif page == "📊 Analytics":
+        with st.expander("📜 Previous Sessions Archive"):
+            archives = get_chat_archives(uid)
+            if archives:
+                for sid, name, ts in archives:
+                    arch_col, del_col = st.columns([0.85, 0.15])
+                    if arch_col.button(f"📄 {ts} | {name}", key=f"arch_{sid}", use_container_width=True):
+                        st.session_state.view_archive = get_archived_messages(uid, sid)
+                        st.rerun()
+                    if del_col.button("🗑️", key=f"del_{sid}"):
+                        delete_chat_archive(uid, sid)
+                        st.rerun()
+            else: st.write("No archived sessions yet.")
+        
+        st.markdown("---")
+        for m in st.session_state.messages[1:]:
+            avatar = "🤖" if m["role"] == "assistant" else "👤"
+            with st.chat_message(m["role"], avatar=avatar):
+                from utils import _safe_content
+                content = _safe_content(m.get("content", ""))
+                if "[FILE ATTACHMENT]:" in content:
+                    main_text, attachment = content.split("[FILE ATTACHMENT]:", 1)
+                    st.markdown(main_text.strip())
+                    with st.expander("📄 View Attached"): st.text(attachment.strip())
+                else: st.markdown(content)
+
+        # Interactive Quick-Prompt Chips
+        prompt_to_send = None
+        if len(st.session_state.messages) <= 1:
+            st.caption("💡 Choose a quick topic or type your own question below:")
+            chip_cols = st.columns(4)
+            if chip_cols[0].button("⚡ Plan My Day", use_container_width=True):
+                prompt_to_send = "Help me plan an ultra-productive day using time-blocking and habit stacking."
+            if chip_cols[1].button("🧠 Beat Procrastination", use_container_width=True):
+                prompt_to_send = "I'm procrastinating on an important task. Guide me through the 2-minute rule to start immediately."
+            if chip_cols[2].button("💪 Morning Routine", use_container_width=True):
+                prompt_to_send = "Design an energizing 30-minute morning routine based on behavioral science."
+            if chip_cols[3].button("🎯 Habit Audit", use_container_width=True):
+                prompt_to_send = "Audit my daily habits and tell me which smallest adjustment will compound the most."
+            st.markdown("")
+
+        uploaded_file = st.file_uploader("Attach context", type=["png", "jpg", "jpeg", "webp", "pdf", "txt", "md"], label_visibility="collapsed")
+        chat_input_val = st.chat_input("Ask about habits…")
+        prompt = prompt_to_send or chat_input_val
+        if prompt:
+            file_payload = process_uploaded_file(uploaded_file)
+            image_data = None
+            final_prompt = prompt
+            if file_payload:
+                if file_payload["type"] == "image": image_data = file_payload["data"]
+                else: final_prompt = f"{prompt}\n\n[FILE ATTACHMENT]:\n{file_payload['data']}"
+            with st.chat_message("user", avatar="👤"): st.markdown(prompt)
+            if file_payload is None and not is_on_topic(prompt, st.session_state.messages):
+                refusal = "I specialized in habits and productivity."
+                with st.chat_message("assistant", avatar="🤖"): st.markdown(refusal)
+                st.session_state.messages.append({"role": "assistant", "content": refusal})
+            else:
+                st.session_state.messages.append({"role": "user", "content": final_prompt})
+                habit_summary = get_habit_context(uid)
+                dynamic_messages = st.session_state.messages.copy()
+                dynamic_messages[0] = {"role": "system", "content": f"{SYSTEM_PROMPT}\n\nPROGRESS:\n{habit_summary}"}
+                with st.chat_message("assistant", avatar="🤖"):
+                    llm_response = call_llm(dynamic_messages, stream=True, image_data=image_data)
+                    if not isinstance(llm_response, str):
+                        reply = st.write_stream(llm_response)
+                    else:
+                        st.markdown(llm_response)
+                        reply = llm_response
+                
+                # Sanitize final saved replies against unclosed think tags
+                from api import clean_think_tags
+                reply = clean_think_tags(reply)
+                if not reply.strip():
+                    reply = "⚠️ The AI server timed out or returned an empty response due to temporary capacity constraints. Please try resending your message."
+                st.session_state.messages.append({"role": "assistant", "content": reply})
+                save_history(uid, st.session_state.messages)
+                st.rerun()
+
+# -------------------------------------------------------------
+# TAB 2: ANALYTICS
+# -------------------------------------------------------------
+with tab_analytics:
     # GAMIFICATION & MASTERY XP CARD
     xp_data = get_user_xp_and_level(uid)
     with st.container(border=True):
@@ -679,8 +659,10 @@ elif page == "📊 Analytics":
         with sub_tab_week: st.bar_chart(weekly.set_index('week'))
         with sub_tab_month: st.bar_chart(monthly.set_index('month'))
 
-# PAGE: TO-DO
-elif page == "✅ To-Do List":
+# -------------------------------------------------------------
+# TAB 3: TO-DO TASKS
+# -------------------------------------------------------------
+with tab_tasks:
     st.subheader("AI Task Architect")
     todos = load_todos(uid)
     
@@ -771,8 +753,10 @@ elif page == "✅ To-Do List":
             save_todos(uid, todos)
             st.rerun()
 
-# PAGE: LOGBOOK
-elif page == "📓 Logbook":
+# -------------------------------------------------------------
+# TAB 4: LOGBOOK
+# -------------------------------------------------------------
+with tab_logbook:
     st.subheader("The Vault")
     
     with st.expander("🌙 Evening Reflection"):
@@ -827,8 +811,10 @@ elif page == "📓 Logbook":
         except Exception:
             st.info("Database file not found yet.")
 
-# PAGE: LIBRARY
-elif page == "📚 Library":
+# -------------------------------------------------------------
+# TAB 5: LIBRARY
+# -------------------------------------------------------------
+with tab_library:
     st.subheader("📚 Mastery Library")
     st.caption("Curated resources to sharpen your habits and mindset.")
 
