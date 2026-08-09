@@ -90,6 +90,7 @@ if "user_id" not in st.session_state: st.session_state.user_id = None
 if "logout_triggered" not in st.session_state: st.session_state.logout_triggered = False
 if "sync_attempts" not in st.session_state: st.session_state.sync_attempts = 0
 if "current_page" not in st.session_state: st.session_state.current_page = "💬 Habit Coach"
+if "nav_selection" not in st.session_state: st.session_state.nav_selection = "💬 Coach"
 if "last_input" not in st.session_state: st.session_state.last_input = ""
 if "timer_mode" not in st.session_state: st.session_state.timer_mode = "🍅 Focus"
 if "timer_active" not in st.session_state: st.session_state.timer_active = False
@@ -154,7 +155,7 @@ def show_consistency_heatmap(user_id):
     display_cols = [c.split("-W")[-1] for c in pivot.columns]
     fig = px.imshow(pivot, labels=dict(x="Weeks", y="Day", color="Habits"), x=display_cols, y=pivot.index, color_continuous_scale="Blues", template="plotly_dark")
     fig.update_layout(height=250, margin=dict(l=0, r=0, t=10, b=10), coloraxis_showscale=False)
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False, "responsive": True})
 
 # SIDEBAR (Status & Tools)
 with st.sidebar:
@@ -429,15 +430,18 @@ pages_map = {
 with st.container():
     cols = st.columns([0.6, 0.4])
     with cols[0]:
-        choice = st.segmented_control(
+        def _on_nav_change():
+            sel = st.session_state.get("nav_selection")
+            if sel and sel in pages_map:
+                st.session_state.current_page = pages_map[sel]
+
+        st.segmented_control(
             "Navigation", 
             options=list(pages_map.keys()), 
-            default=next(k for k, v in pages_map.items() if v == st.session_state.current_page),
-            label_visibility="collapsed",
-            key="top_nav_bar"
+            key="nav_selection",
+            on_change=_on_nav_change,
+            label_visibility="collapsed"
         )
-        if choice:
-            st.session_state.current_page = pages_map[choice]
     
     with cols[1]:
         xp_info = get_user_xp_and_level(uid)
