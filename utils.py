@@ -530,6 +530,82 @@ def get_user_badges(user_id):
     if score >= 80: badges.append("🎯 High Consistency")
     return badges
 
+def get_user_xp_and_level(user_id):
+    conn = get_connection()
+    c = conn.cursor()
+    
+    # 1. Habits XP (+10 XP each)
+    c.execute("SELECT COUNT(*) FROM habits_log WHERE user_id = ?", (user_id,))
+    habits_count = c.fetchone()[0] or 0
+    habits_xp = habits_count * 10
+    
+    # 2. Focus XP (+1 XP per minute -> 25 min session = 25 XP)
+    c.execute("SELECT SUM(duration_mins) FROM focus_sessions WHERE user_id = ?", (user_id,))
+    focus_mins = c.fetchone()[0] or 0
+    focus_xp = int(focus_mins)
+    
+    # 3. Reflections XP (+15 XP each)
+    c.execute("SELECT COUNT(*) FROM reflections WHERE user_id = ?", (user_id,))
+    reflections_count = c.fetchone()[0] or 0
+    reflections_xp = reflections_count * 15
+    
+    # 4. Completed Tasks XP (+5 XP each)
+    c.execute("SELECT COUNT(*) FROM todos WHERE user_id = ? AND done = 1", (user_id,))
+    tasks_count = c.fetchone()[0] or 0
+    tasks_xp = tasks_count * 5
+    
+    conn.close()
+    
+    total_xp = habits_xp + focus_xp + reflections_xp + tasks_xp
+    
+    # Mastery Level Thresholds (Tier curve)
+    levels = [
+        (1, 0, 99, "🥉 Novice Starter"),
+        (2, 100, 249, "🥈 Habit Builder"),
+        (3, 250, 499, "🥇 Consistency Apprentice"),
+        (4, 500, 849, "⚡ Momentum Achiever"),
+        (5, 850, 1299, "🛡️ Focus Practitioner"),
+        (6, 1300, 1899, "⚔️ Discipline Warrior"),
+        (7, 1900, 2599, "🏹 Productivity Strategist"),
+        (8, 2600, 3499, "🔮 Habit Architect"),
+        (9, 3500, 4999, "🌟 High-Performance Master"),
+        (10, 5000, 999999, "👑 Discipline Grandmaster"),
+    ]
+    
+    current_level = 1
+    current_title = "🥉 Novice Starter"
+    lvl_min = 0
+    lvl_max = 100
+    
+    for lvl, l_min, l_max, title in levels:
+        if total_xp >= l_min:
+            current_level = lvl
+            current_title = title
+            lvl_min = l_min
+            lvl_max = l_max
+            
+    # Calculate progress percentage toward next level
+    if current_level >= 10:
+        progress_pct = 1.0
+        needed_xp = 0
+    else:
+        span = (lvl_max + 1) - lvl_min
+        earned_in_lvl = total_xp - lvl_min
+        progress_pct = min(1.0, max(0.0, earned_in_lvl / span))
+        needed_xp = (lvl_max + 1) - total_xp
+        
+    return {
+        "total_xp": total_xp,
+        "level": current_level,
+        "title": current_title,
+        "progress_pct": progress_pct,
+        "needed_xp": needed_xp,
+        "habits_xp": habits_xp,
+        "focus_xp": focus_xp,
+        "reflections_xp": reflections_xp,
+        "tasks_xp": tasks_xp
+    }
+
 def get_habit_stats(user_id):
     conn = get_connection()
     df = pd.read_sql_query("SELECT date, habit, category FROM habits_log WHERE user_id = ?", conn, params=(user_id,))

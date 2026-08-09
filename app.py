@@ -33,7 +33,7 @@ from utils import (
     log_focus_session, get_total_focus_time, get_heatmap_data, generate_life_audit,
     archive_current_chat, get_chat_archives, get_archived_messages, delete_chat_archive,
     get_chime_bytes, get_ticking_html, get_start_beep_bytes, get_tick_bytes,
-    log_media_if_new
+    log_media_if_new, get_user_xp_and_level
 )
 
 def extract_json_from_text(text):
@@ -413,7 +413,8 @@ with st.container():
             st.session_state.current_page = pages_map[choice]
     
     with cols[1]:
-        st.markdown(f"<p style='text-align:right; margin:0;'>🔥 {get_current_streak(uid)}d | 🎯 {get_consistency_score(uid)}%</p>", unsafe_allow_html=True)
+        xp_info = get_user_xp_and_level(uid)
+        st.markdown(f"<p style='text-align:right; margin:0;'>🎮 <b>Lv.{xp_info['level']}</b> ({xp_info['total_xp']} XP) | 🔥 {get_current_streak(uid)}d | 🎯 {get_consistency_score(uid)}%</p>", unsafe_allow_html=True)
 
 st.markdown("---")
 
@@ -525,8 +526,23 @@ if page == "💬 Habit Coach":
 
 # PAGE: ANALYTICS
 elif page == "📊 Analytics":
-    st.subheader("Performance Analytics")
-    
+    # GAMIFICATION & MASTERY XP CARD
+    xp_data = get_user_xp_and_level(uid)
+    with st.container(border=True):
+        g_c1, g_c2 = st.columns([0.65, 0.35])
+        with g_c1:
+            st.markdown(f"### {xp_data['title']}")
+            if xp_data['level'] < 10:
+                st.caption(f"🚀 **{xp_data['needed_xp']} XP** needed to reach **Level {xp_data['level'] + 1}**")
+            else:
+                st.caption("👑 Max level reached! You are a true Discipline Grandmaster.")
+            st.progress(xp_data['progress_pct'])
+        with g_c2:
+            st.metric("Total Experience", f"{xp_data['total_xp']} XP", delta=f"Level {xp_data['level']}")
+
+        st.caption(f"💡 **XP Breakdown**: 🛡️ Habits: `+{xp_data['habits_xp']} XP` | 🍅 Focus Time: `+{xp_data['focus_xp']} XP` | 🌙 Reflections: `+{xp_data['reflections_xp']} XP` | ✅ Tasks: `+{xp_data['tasks_xp']} XP`")
+
+    st.markdown("---")
     # HEATMAP AT THE TOP
     st.markdown("### Consistency Heatmap")
     show_consistency_heatmap(uid)
