@@ -539,18 +539,23 @@ with tab_coach:
             else: st.write("No archived sessions yet.")
         
         st.markdown("---")
-        for m in st.session_state.messages[1:]:
-            avatar = "🤖" if m["role"] == "assistant" else "👤"
-            with st.chat_message(m["role"], avatar=avatar):
-                from utils import _safe_content
-                content = _safe_content(m.get("content", ""))
-                if "[FILE ATTACHMENT]:" in content:
-                    main_text, attachment = content.split("[FILE ATTACHMENT]:", 1)
-                    st.markdown(main_text.strip())
-                    with st.expander("📄 View Attached"): st.text(attachment.strip())
-                else: st.markdown(content)
+        
+        # 1. Main Chat Container (Always placed ABOVE input widgets)
+        chat_container = st.container()
+        
+        with chat_container:
+            for m in st.session_state.messages[1:]:
+                avatar = "🤖" if m["role"] == "assistant" else "👤"
+                with st.chat_message(m["role"], avatar=avatar):
+                    from utils import _safe_content
+                    content = _safe_content(m.get("content", ""))
+                    if "[FILE ATTACHMENT]:" in content:
+                        main_text, attachment = content.split("[FILE ATTACHMENT]:", 1)
+                        st.markdown(main_text.strip())
+                        with st.expander("📄 View Attached"): st.text(attachment.strip())
+                    else: st.markdown(content)
 
-        # Interactive Quick-Prompt Chips
+        # 2. Interactive Quick-Prompt Chips (Only shown when starting a fresh chat)
         prompt_to_send = None
         if len(st.session_state.messages) <= 1:
             st.caption("💡 Choose a quick topic or type your own question below:")
@@ -565,9 +570,11 @@ with tab_coach:
                 prompt_to_send = "Audit my daily habits and tell me which smallest adjustment will compound the most."
             st.markdown("")
 
+        # 3. Input Controls (Always placed BELOW chat_container at the bottom)
         uploaded_file = st.file_uploader("Attach context", type=["png", "jpg", "jpeg", "webp", "pdf", "txt", "md"], label_visibility="collapsed")
         chat_input_val = st.chat_input("Ask about habits…")
         prompt = prompt_to_send or chat_input_val
+        
         if prompt:
             file_payload = process_uploaded_file(uploaded_file)
             image_data = None
@@ -575,31 +582,36 @@ with tab_coach:
             if file_payload:
                 if file_payload["type"] == "image": image_data = file_payload["data"]
                 else: final_prompt = f"{prompt}\n\n[FILE ATTACHMENT]:\n{file_payload['data']}"
-            with st.chat_message("user", avatar="👤"): st.markdown(prompt)
-            if file_payload is None and not is_on_topic(prompt, st.session_state.messages):
-                refusal = "I specialized in habits and productivity."
-                with st.chat_message("assistant", avatar="🤖"): st.markdown(refusal)
-                st.session_state.messages.append({"role": "assistant", "content": refusal})
-            else:
-                st.session_state.messages.append({"role": "user", "content": final_prompt})
-                habit_summary = get_habit_context(uid)
-                dynamic_messages = st.session_state.messages.copy()
-                dynamic_messages[0] = {"role": "system", "content": f"{SYSTEM_PROMPT}\n\nPROGRESS:\n{habit_summary}"}
-                with st.chat_message("assistant", avatar="🤖"):
-                    llm_response = call_llm(dynamic_messages, stream=True, image_data=image_data)
-                    if not isinstance(llm_response, str):
-                        reply = st.write_stream(llm_response)
-                    else:
-                        st.markdown(llm_response)
-                        reply = llm_response
                 
-                # Sanitize final saved replies against unclosed think tags
-                from api import clean_think_tags
-                reply = clean_think_tags(reply)
-                if not reply.strip():
-                    reply = "⚠️ The AI server timed out or returned an empty response due to temporary capacity constraints. Please try resending your message."
-                st.session_state.messages.append({"role": "assistant", "content": reply})
-                save_history(uid, st.session_state.messages)
+            # Render new user message & assistant reply INSIDE chat_container (ABOVE input box!)
+            with chat_container:
+                with st.chat_message("user", avatar="👤"): st.markdown(prompt)
+                if file_payload is None and not is_on_topic(prompt, st.session_state.messages):
+                    refusal = "I specialized in habits and productivity."
+                    with st.chat_message("assistant", avatar="🤖"): st.markdown(refusal)
+                    st.session_state.messages.append({"role": "user", "content": final_prompt})
+                    st.session_state.messages.append({"role": "assistant", "content": refusal})
+                    save_history(uid, st.session_state.messages)
+                else:
+                    st.session_state.messages.append({"role": "user", "content": final_prompt})
+                    habit_summary = get_habit_context(uid)
+                    dynamic_messages = st.session_state.messages.copy()
+                    dynamic_messages[0] = {"role": "system", "content": f"{SYSTEM_PROMPT}\n\nPROGRESS:\n{habit_summary}"}
+                    with st.chat_message("assistant", avatar="🤖"):
+                        llm_response = call_llm(dynamic_messages, stream=True, image_data=image_data)
+                        if not isinstance(llm_response, str):
+                            reply = st.write_stream(llm_response)
+                        else:
+                            st.markdown(llm_response)
+                            reply = llm_response
+                    
+                    # Sanitize final saved replies against unclosed think tags
+                    from api import clean_think_tags
+                    reply = clean_think_tags(reply)
+                    if not reply.strip():
+                        reply = "⚠️ The AI server timed out or returned an empty response due to temporary capacity constraints. Please try resending your message."
+                    st.session_state.messages.append({"role": "assistant", "content": reply})
+                    save_history(uid, st.session_state.messages)
 
 # -------------------------------------------------------------
 # TAB 2: ANALYTICS
