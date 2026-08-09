@@ -33,7 +33,7 @@ from utils import (
     log_focus_session, get_total_focus_time, get_heatmap_data, generate_life_audit,
     archive_current_chat, get_chat_archives, get_archived_messages, delete_chat_archive,
     get_chime_bytes, get_ticking_html, get_start_beep_bytes, get_tick_bytes,
-    log_media_if_new, get_user_xp_and_level
+    log_media_if_new, get_user_xp_and_level, log_completed_task
 )
 
 def extract_json_from_text(text):
@@ -659,6 +659,8 @@ elif page == "✅ To-Do List":
         done = c1.checkbox("Done", value=t_done, key=f"todo_{i}", label_visibility="collapsed")
         if done != t_done:
             todos[i]["done"] = done
+            if done:
+                log_completed_task(uid, t_task)
             save_todos(uid, todos)
             st.rerun()
         c2.markdown(f"**{t_task}**" if not t_done else f"~~{t_task}~~")

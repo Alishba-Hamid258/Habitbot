@@ -530,6 +530,22 @@ def get_user_badges(user_id):
     if score >= 80: badges.append("🎯 High Consistency")
     return badges
 
+def log_completed_task(user_id, task_name):
+    try:
+        conn = get_connection()
+        c = conn.cursor()
+        c.execute('''CREATE TABLE IF NOT EXISTS completed_tasks_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
+            task TEXT,
+            completed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )''')
+        c.execute("INSERT INTO completed_tasks_history (user_id, task) VALUES (?, ?)", (user_id, task_name))
+        conn.commit()
+        conn.close()
+    except Exception:
+        pass
+
 def get_user_xp_and_level(user_id):
     conn = get_connection()
     c = conn.cursor()
@@ -549,9 +565,23 @@ def get_user_xp_and_level(user_id):
     reflections_count = c.fetchone()[0] or 0
     reflections_xp = reflections_count * 15
     
-    # 4. Completed Tasks XP (+5 XP each)
+    # 4. Completed Tasks XP (+5 XP each) — Permanent lifetime history
+    try:
+        c.execute('''CREATE TABLE IF NOT EXISTS completed_tasks_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
+            task TEXT,
+            completed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )''')
+        c.execute("SELECT COUNT(*) FROM completed_tasks_history WHERE user_id = ?", (user_id,))
+        hist_count = c.fetchone()[0] or 0
+    except Exception:
+        hist_count = 0
+        
     c.execute("SELECT COUNT(*) FROM todos WHERE user_id = ? AND done = 1", (user_id,))
-    tasks_count = c.fetchone()[0] or 0
+    active_done = c.fetchone()[0] or 0
+    
+    tasks_count = max(hist_count, active_done)
     tasks_xp = tasks_count * 5
     
     conn.close()

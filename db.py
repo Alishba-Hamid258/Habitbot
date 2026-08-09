@@ -14,7 +14,7 @@ def get_connection():
         # Fallback if WAL is not supported in the SQLite build
         pass
         
-    # Auto-ensure media_history table exists to bypass Streamlit module caching issues
+    # Auto-ensure dynamic tables exist
     try:
         conn.execute('''
             CREATE TABLE IF NOT EXISTS media_history (
@@ -24,6 +24,14 @@ def get_connection():
                 url TEXT,
                 title TEXT,
                 FOREIGN KEY(user_id) REFERENCES users(id)
+            )
+        ''')
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS completed_tasks_history (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER,
+                task TEXT,
+                completed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
         conn.commit()
