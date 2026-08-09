@@ -167,9 +167,34 @@ with st.sidebar:
         
         # Stats
         st.markdown("### 🔥 Mastery")
+        streak = get_current_streak(uid)
+        discipline = get_consistency_score(uid)
         c1, c2 = st.columns(2)
-        c1.metric("Streak", f"{get_current_streak(uid)}d")
-        c2.metric("Discipline", f"{get_consistency_score(uid)}%")
+        c1.metric("🔥 Streak", f"{streak}d")
+        c2.metric("🎯 Discipline", f"{discipline}%")
+
+        # Contextual guide based on values
+        if streak == 0 and discipline == 0:
+            st.info(
+                "**Getting Started:**\n\n"
+                "✅ **Check off habits** in Daily Matrix below to start your streak.\n\n"
+                "🔥 **Streak** counts how many *consecutive days* you logged at least one habit.\n\n"
+                "🎯 **Discipline** shows the % of the last 30 days you were active.",
+                icon="💡"
+            )
+        else:
+            # Streak tip
+            if streak >= 7:
+                st.success(f"🔥 **{streak}-day streak!** Keep it up — consistency is compounding!", icon="🏆")
+            elif streak >= 1:
+                st.info(f"🔥 **{streak}-day streak** — log a habit today to keep it alive!", icon="🔥")
+            # Discipline tip
+            if discipline >= 80:
+                st.success(f"🎯 **{discipline}% discipline** — elite level consistency!", icon="⭐")
+            elif discipline >= 50:
+                st.warning(f"🎯 **{discipline}% discipline** — solid, aim for 80%+ this month.", icon="📈")
+            elif discipline > 0:
+                st.warning(f"🎯 **{discipline}% discipline** — log habits daily to build momentum.", icon="💪")
 
         # Pomodoro Timer (Fragmented for real-time updates)
         st.markdown("---")
