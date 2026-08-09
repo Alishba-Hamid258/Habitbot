@@ -652,11 +652,12 @@ elif page == "✅ To-Do List":
 
     for i, t in enumerate(todos):
         c1, c2, c3, c4 = st.columns([0.1, 0.6, 0.2, 0.1])
+        t_id = t.get("id") or f"{i}_{abs(hash(t.get('task', '')))}"
         t_done = t.get("done", False)
         t_task = t.get("task", "Untitled Task")
         t_pri = t.get("priority", "Medium")
         t_time = t.get("time", "")
-        done = c1.checkbox("Done", value=t_done, key=f"todo_{i}", label_visibility="collapsed")
+        done = c1.checkbox("Done", value=t_done, key=f"todo_chk_{t_id}", label_visibility="collapsed")
         if done != t_done:
             todos[i]["done"] = done
             if done:
@@ -665,7 +666,7 @@ elif page == "✅ To-Do List":
             st.rerun()
         c2.markdown(f"**{t_task}**" if not t_done else f"~~{t_task}~~")
         c3.caption(f"{t_pri} | {t_time}")
-        if c4.button("🗑️", key=f"del_todo_{i}"):
+        if c4.button("🗑️", key=f"del_todo_{t_id}"):
             todos.pop(i)
             save_todos(uid, todos)
             st.rerun()

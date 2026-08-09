@@ -250,10 +250,10 @@ def save_todos(user_id, todos):
 def load_todos(user_id):
     conn = get_connection()
     c = conn.cursor()
-    c.execute("SELECT task, priority, time, done FROM todos WHERE user_id = ? ORDER BY id ASC", (user_id,))
+    c.execute("SELECT id, task, priority, time, done FROM todos WHERE user_id = ? ORDER BY id ASC", (user_id,))
     rows = c.fetchall()
     conn.close()
-    return [{"task": r[0], "priority": r[1], "time": r[2], "done": bool(r[3])} for r in rows]
+    return [{"id": r[0], "task": r[1], "priority": r[2], "time": r[3], "done": bool(r[4])} for r in rows]
 
 # ================================
 # REFLECTIONS
