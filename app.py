@@ -29,7 +29,7 @@ from utils import (
     process_uploaded_file, get_notification_js, get_permission_js,
     log_focus_session, get_total_focus_time, get_heatmap_data, generate_life_audit,
     archive_current_chat, get_chat_archives, get_archived_messages, delete_chat_archive,
-    get_chime_html, get_ticking_html, get_prime_audio_js, get_start_beep_html
+    get_chime_bytes, get_ticking_html, get_start_beep_bytes
 )
 
 def extract_json_from_text(text):
@@ -97,7 +97,6 @@ if "lib_custom_url" not in st.session_state: st.session_state.lib_custom_url = "
 
 # GLOBAL SETUP
 st.markdown(get_permission_js(), unsafe_allow_html=True)
-st.markdown(get_prime_audio_js(), unsafe_allow_html=True)
 
 # CALLBACKS (Shared between Sidebar and Main App)
 def get_callbacks(user_id):
@@ -213,7 +212,7 @@ with st.sidebar:
         def timer_fragment():
             # Play start beep exactly once when starting
             if st.session_state.get("play_start_sound"):
-                st.markdown(get_start_beep_html(), unsafe_allow_html=True)
+                st.audio(get_start_beep_bytes(), format="audio/wav", autoplay=True)
                 st.session_state.play_start_sound = False
 
             if st.session_state.timer_active and st.session_state.timer_seconds > 0:
@@ -221,7 +220,7 @@ with st.sidebar:
                 if st.session_state.timer_seconds == 0:
                     st.session_state.timer_active = False
                     st.toast("⏰ Time's up!", icon="🔔")
-                    st.markdown(get_chime_html(), unsafe_allow_html=True)
+                    st.audio(get_chime_bytes(), format="audio/wav", autoplay=True)
 
             mins, secs = divmod(st.session_state.timer_seconds, 60)
             st.markdown(f"<h1 style='text-align: center; color: #FF4B4B;'>{mins:02d}:{secs:02d}</h1>", unsafe_allow_html=True)
@@ -233,7 +232,6 @@ with st.sidebar:
                     st.rerun()
             else:
                 if st.button("🚀 Start Timer", use_container_width=True, key="sb_start"): 
-                    st.markdown("<script>window.primeAudio();</script>", unsafe_allow_html=True)
                     st.session_state.timer_active = True
                     st.session_state.play_start_sound = True
                     st.rerun()
@@ -658,6 +656,11 @@ elif page == "📚 Library":
 # FINAL PWA CSS & META
 pwa_html = """
 <style>
+    /* Hide all Streamlit audio player widgets from the UI */
+    div[data-testid="stAudio"] {
+        display: none !important;
+    }
+    
     header[data-testid="stHeader"] { visibility: visible !important; background: rgba(14, 17, 23, 0.9) !important; }
     .block-container { padding-top: 1rem !important; }
     [data-testid="stSidebar"] { background-color: #0E1117 !important; }
