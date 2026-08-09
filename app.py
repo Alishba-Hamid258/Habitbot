@@ -271,6 +271,16 @@ with st.sidebar:
                     col_h, col_del = st.columns([0.8, 0.2])
                     col_h.write(h)
                     col_del.button("🗑️", key=f"del_core_{i}", on_click=cb["delete_core"], args=(i,))
+                    
+        # Persistent Background Music/Video Player
+        st.markdown("---")
+        with st.expander("🎵 Custom Media Player"):
+            st.caption("Play background music or videos continuously across all tabs.")
+            custom_url = st.text_input("YouTube URL", value=st.session_state.lib_custom_url, placeholder="https://www.youtube.com/watch?v=...", key="sb_custom_player_input")
+            st.session_state.lib_custom_url = custom_url
+            if st.session_state.lib_custom_url:
+                if "youtube.com" in st.session_state.lib_custom_url or "youtu.be" in st.session_state.lib_custom_url:
+                    st.video(st.session_state.lib_custom_url)
     else:
         st.info("👋 Welcome! Please log in.")
 # (End of setup)
@@ -653,18 +663,8 @@ elif page == "📚 Library":
 
     with lib_tab3:
         st.markdown("### 🎬 Custom Player")
-        st.caption("Paste any YouTube URL below to watch it directly in HabitBot.")
-        # Use value from session_state and update it on change
-        custom_url = st.text_input("YouTube URL", value=st.session_state.lib_custom_url, placeholder="https://www.youtube.com/watch?v=...", key="lib_custom_player_input")
-        st.session_state.lib_custom_url = custom_url
-        
-        if st.session_state.lib_custom_url:
-            if "youtube.com" in st.session_state.lib_custom_url or "youtu.be" in st.session_state.lib_custom_url:
-                with st.container(border=True):
-                    st.video(st.session_state.lib_custom_url)
-                    st.success("Playing your custom resource!")
-            else:
-                st.warning("Please enter a valid YouTube link.")
+        st.info("💡 **Persistent Playback Enabled!** To keep your custom music or video playing continuously while you navigate across tabs (like Coach or Tasks), the Custom Player has been integrated into the sidebar on the left!")
+        st.caption("Expand **🎵 Custom Media Player** in the sidebar to paste your YouTube link and control playback.")
 # FINAL PWA CSS & META
 pwa_html = """
 <style>
