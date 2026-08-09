@@ -626,12 +626,12 @@ elif page == "📚 Library":
     with lib_tab1:
         st.markdown("### 📖 The Habit Blueprint")
         books = [
-            {"title": "The Power of Habit", "author": "Charles Duhigg", "desc": "Why we do what we do in life and business.", "link": "https://dn710109.ca.archive.org/0/items/the-power-of-habit-charles-duhigg/The%20Power%20of%20Habit%20-%20Charles%20Duhigg.pdf", "icon": "🔄"},
-            {"title": "Think and Grow Rich", "author": "Napoleon Hill", "desc": "The classic guide to success and wealth.", "link": "https://pdf.infobooks.org//ING/Autores/Napoleon%20Hill/think-and-grow-rich-napoleon-hill.pdf", "icon": "💰"},
-            {"title": "As a Man Thinketh", "author": "James Allen", "desc": "How your thoughts shape your reality.", "link": "https://pdf.infobooks.org/ING/PDF/as-a-man-thinketh-james-allen.pdf", "icon": "🧠"},
-            {"title": "The Science of Getting Rich", "author": "Wallace D. Wattles", "desc": "The mental science behind prosperity.", "link": "https://pdf.infobooks.org/ING/PDF/the-science-of-getting-rich.pdf", "icon": "📈"},
-            {"title": "The Power of Concentration", "author": "Theron Q. Dumont", "desc": "Exercises to train your focus like a muscle.", "link": "https://pdf.infobooks.org/ING/PDF/thepower-of-concentration-theron-q-dumont.pdf", "icon": "🎯"},
-            {"title": "Deep Work", "author": "Cal Newport", "desc": "Rules for focused success in a distracted world.", "link": "https://www.calnewport.com/books/deep-work/", "icon": "🧪"}
+            {"title": "The Power of Habit", "author": "Charles Duhigg", "desc": "Why we do what we do in life and business.", "link": "https://archive.org/details/the-power-of-habit-charles-duhigg", "icon": "🔄"},
+            {"title": "Think and Grow Rich", "author": "Napoleon Hill", "desc": "The classic guide to success and wealth.", "link": "https://archive.org/details/thinkandgrowrich00hill", "icon": "💰"},
+            {"title": "As a Man Thinketh", "author": "James Allen", "desc": "How your thoughts shape your reality.", "link": "https://www.gutenberg.org/ebooks/4507", "icon": "🧠"},
+            {"title": "The Science of Getting Rich", "author": "Wallace D. Wattles", "desc": "The mental science behind prosperity.", "link": "https://www.gutenberg.org/ebooks/59832", "icon": "📈"},
+            {"title": "The Power of Concentration", "author": "Theron Q. Dumont", "desc": "Exercises to train your focus like a muscle.", "link": "https://www.gutenberg.org/ebooks/49214", "icon": "🎯"},
+            {"title": "Deep Work", "author": "Cal Newport", "desc": "Rules for focused success in a distracted world.", "link": "https://openlibrary.org/works/OL17841393W/Deep_Work", "icon": "🧪"}
         ]
         for b in books:
             with st.container(border=True):
@@ -639,7 +639,7 @@ elif page == "📚 Library":
                 col1.markdown(f"#### {b['icon']} {b['title']}")
                 col1.caption(f"by {b['author']}")
                 col1.write(b['desc'])
-                col2.link_button("Details", b['link'], use_container_width=True)
+                col2.link_button("📖 Read Free", b['link'], use_container_width=True)
 
     with lib_tab2:
         st.markdown("### 🎥 Mastery Theater")
