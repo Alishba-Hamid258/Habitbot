@@ -29,7 +29,8 @@ from utils import (
     process_uploaded_file, get_notification_js, get_permission_js,
     log_focus_session, get_total_focus_time, get_heatmap_data, generate_life_audit,
     archive_current_chat, get_chat_archives, get_archived_messages, delete_chat_archive,
-    get_chime_bytes, get_ticking_html, get_start_beep_bytes, get_tick_bytes
+    get_chime_bytes, get_ticking_html, get_start_beep_bytes, get_tick_bytes,
+    log_media_if_new
 )
 
 def extract_json_from_text(text):
@@ -311,6 +312,8 @@ with st.sidebar:
             st.caption("Play background music or videos continuously across all tabs.")
             custom_url = st.text_input("YouTube URL", value=st.session_state.lib_custom_url, placeholder="https://www.youtube.com/watch?v=...", key="sb_custom_player_input")
             st.session_state.lib_custom_url = custom_url
+            if custom_url:
+                log_media_if_new(uid, custom_url)
             if st.session_state.lib_custom_url:
                 if "youtube.com" in st.session_state.lib_custom_url or "youtu.be" in st.session_state.lib_custom_url:
                     st.video(st.session_state.lib_custom_url)
@@ -708,6 +711,8 @@ elif page == "📚 Library":
         )
         # Update shared session state so sidebar player picks it up
         st.session_state.lib_custom_url = custom_url
+        if custom_url:
+            log_media_if_new(uid, custom_url)
 
         if st.session_state.lib_custom_url:
             if "youtube.com" in st.session_state.lib_custom_url or "youtu.be" in st.session_state.lib_custom_url:

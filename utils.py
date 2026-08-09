@@ -613,6 +613,45 @@ def get_total_focus_time(user_id, period="today"):
     row = c.fetchone()
     conn.close()
     return row[0] if row[0] else 0
+def log_media_if_new(user_id, url):
+    if not url:
+        return
+    
+    # 1. Prevent double logging during the same session run
+    if st.session_state.get("last_logged_url") == url:
+        return
+        
+    # Verify it is a YouTube link
+    if "youtube.com" not in url and "youtu.be" not in url:
+        return
+
+    # 2. Fetch YouTube title using oEmbed API
+    import urllib.request
+    import urllib.parse
+    import json
+    
+    title = "Unknown YouTube Video"
+    try:
+        req_url = f"https://www.youtube.com/oembed?url={urllib.parse.quote(url)}&format=json"
+        with urllib.request.urlopen(req_url, timeout=3) as response:
+            data = json.loads(response.read().decode())
+            title = data.get("title", "Unknown YouTube Video")
+    except Exception:
+        pass
+        
+    # 3. Log to DB if it's different from the most recent entry to prevent duplicate spams
+    conn = get_connection()
+    c = conn.cursor()
+    c.execute("SELECT url FROM media_history WHERE user_id = ? ORDER BY id DESC LIMIT 1", (user_id,))
+    row = c.fetchone()
+    if not row or row[0] != url:
+        date_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        c.execute("INSERT INTO media_history (user_id, date, url, title) VALUES (?, ?, ?, ?)", (user_id, date_str, url, title))
+        conn.commit()
+    conn.close()
+    
+    # Cache the logged URL to session state to prevent immediate reruns from re-logging
+    st.session_state.last_logged_url = url
 
 def generate_life_audit(user_id):
     conn = get_connection()
@@ -621,7 +660,8 @@ def generate_life_audit(user_id):
         "Focus": "SELECT date, mode, duration_mins FROM focus_sessions WHERE user_id = ?",
         "Tasks": "SELECT task, priority, time, done FROM todos WHERE user_id = ?",
         "Reflections": "SELECT date, went_well, friction FROM reflections WHERE user_id = ?",
-        "Chat History": "SELECT timestamp, session_name, role, content FROM chat_archives WHERE user_id = ?"
+        "Chat History": "SELECT timestamp, session_name, role, content FROM chat_archives WHERE user_id = ?",
+        "Media History": "SELECT date, title, url FROM media_history WHERE user_id = ?"
     }
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='openpyxl') as writer:

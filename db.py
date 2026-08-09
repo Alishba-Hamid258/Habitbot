@@ -126,8 +126,20 @@ def init_db():
         )
     ''')
 
+    # 9. Media History Table
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS media_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
+            date TEXT,
+            url TEXT,
+            title TEXT,
+            FOREIGN KEY(user_id) REFERENCES users(id)
+        )
+    ''')
+
     # SCHEMA MIGRATION: Add user_id column if it doesn't exist
-    tables = ["chat_history", "core_habits", "habits_log", "todos", "reflections", "focus_sessions"]
+    tables = ["chat_history", "core_habits", "habits_log", "todos", "reflections", "focus_sessions", "media_history"]
     for table in tables:
         try:
             c.execute(f"ALTER TABLE {table} ADD COLUMN user_id INTEGER DEFAULT 1")
