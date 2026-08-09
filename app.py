@@ -164,37 +164,6 @@ with st.sidebar:
                 st.rerun()
 
         st.markdown("---")
-        
-        # Stats
-        st.markdown("### 🔥 Mastery")
-        streak = get_current_streak(uid)
-        discipline = get_consistency_score(uid)
-        c1, c2 = st.columns(2)
-        c1.metric("🔥 Streak", f"{streak}d")
-        c2.metric("🎯 Discipline", f"{discipline}%")
-
-        # Contextual guide based on values
-        if streak == 0 and discipline == 0:
-            st.info(
-                "**Getting Started:**\n\n"
-                "✅ **Check off habits** in Daily Matrix below to start your streak.\n\n"
-                "🔥 **Streak** counts how many *consecutive days* you logged at least one habit.\n\n"
-                "🎯 **Discipline** shows the % of the last 30 days you were active.",
-                icon="💡"
-            )
-        else:
-            # Streak tip
-            if streak >= 7:
-                st.success(f"🔥 **{streak}-day streak!** Keep it up — consistency is compounding!", icon="🏆")
-            elif streak >= 1:
-                st.info(f"🔥 **{streak}-day streak** — log a habit today to keep it alive!", icon="🔥")
-            # Discipline tip
-            if discipline >= 80:
-                st.success(f"🎯 **{discipline}% discipline** — elite level consistency!", icon="⭐")
-            elif discipline >= 50:
-                st.warning(f"🎯 **{discipline}% discipline** — solid, aim for 80%+ this month.", icon="📈")
-            elif discipline > 0:
-                st.warning(f"🎯 **{discipline}% discipline** — log habits daily to build momentum.", icon="💪")
 
         # Pomodoro Timer (Fragmented for real-time updates)
         st.markdown("---")
@@ -283,9 +252,31 @@ with st.sidebar:
         # Daily Matrix
         st.markdown("---")
         st.markdown("### 🛡️ Daily Matrix")
+        st.caption("Tick your daily habits here. Every checkmark builds your Streak and Discipline score.")
+
+        # Streak & Discipline — driven by this section
+        streak = get_current_streak(uid)
+        discipline = get_consistency_score(uid)
+        c1, c2 = st.columns(2)
+        c1.metric("🔥 Streak", f"{streak}d", help="Consecutive days you logged at least one habit")
+        c2.metric("🎯 Discipline", f"{discipline}%", help="% of the last 30 days you were active")
+
+        # Contextual tip
+        if streak == 0 and discipline == 0:
+            st.caption("💡 Check off a habit below to start your streak!")
+        elif streak >= 7:
+            st.success(f"🏆 {streak}-day streak — consistency is compounding!", icon="🔥")
+        elif streak >= 1:
+            st.caption(f"🔥 {streak}-day streak — check today's habits to keep it alive!")
+        if discipline >= 80:
+            st.caption(f"⭐ Elite discipline ({discipline}%) — you're in the top tier!")
+        elif discipline >= 50:
+            st.caption(f"📈 {discipline}% discipline — solid! Push for 80%+ this month.")
+
+        st.markdown("")
         core = load_core_habits(uid)
         logged = get_todays_logged_habits(uid)
-        st.button("☀️ Unfreeze" if "❄️ Freeze Day" in logged else "❄️ Freeze", on_click=cb["toggle_freeze"], use_container_width=True, key="sb_freeze_btn")
+        st.button("☀️ Unfreeze Day" if "❄️ Freeze Day" in logged else "❄️ Freeze Day", on_click=cb["toggle_freeze"], use_container_width=True, key="sb_freeze_btn", help="Freeze skips today without breaking your streak")
         for h in core:
             st.checkbox(h, value=h in logged, key=f"sb_chk_{h}", on_change=cb["toggle_daily"], args=(h,))
             
