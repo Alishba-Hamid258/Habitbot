@@ -677,14 +677,17 @@ pwa_html = """
     }
     
     header[data-testid="stHeader"] { visibility: visible !important; background: rgba(14, 17, 23, 0.9) !important; }
-    .block-container { padding-top: 1rem !important; }
+    .block-container { padding-top: 100px !important; }
     [data-testid="stSidebar"] { background-color: #0E1117 !important; }
     
-    /* Make the top navigation bar container sticky at the top */
+    /* Make the top navigation bar container fixed at the top */
     div[data-testid="stHorizontalBlock"]:first-of-type {
-        position: -webkit-sticky !important;
-        position: sticky !important;
-        top: 2.875rem !important; /* sticks right below Streamlit's header bar */
+        position: fixed !important;
+        top: 2.875rem !important; /* Locks below Streamlit's top header */
+        width: 100% !important;
+        max-width: 736px !important; /* Matches Streamlit's default container max-width */
+        left: auto !important;
+        right: auto !important;
         background-color: #0E1117 !important;
         z-index: 99999 !important;
         padding-top: 12px !important;
