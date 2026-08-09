@@ -186,18 +186,21 @@ with st.sidebar:
             st.session_state.timer_seconds = 1500
             st.session_state.timer_max_seconds = 1500
             st.session_state.sb_adj_mins = 25
+            st.session_state.timer_mode = "Focus"
             st.session_state.timer_active = False
             st.rerun()
         if m_cols[1].button("☕", help="Short Break (5m)"): 
             st.session_state.timer_seconds = 300
             st.session_state.timer_max_seconds = 300
             st.session_state.sb_adj_mins = 5
+            st.session_state.timer_mode = "Break"
             st.session_state.timer_active = False
             st.rerun()
         if m_cols[2].button("🧘", help="Long Break (15m)"): 
             st.session_state.timer_seconds = 900
             st.session_state.timer_max_seconds = 900
             st.session_state.sb_adj_mins = 15
+            st.session_state.timer_mode = "Break"
             st.session_state.timer_active = False
             st.rerun()
 
@@ -230,6 +233,10 @@ with st.sidebar:
                     st.session_state.timer_active = False
                     st.toast("⏰ Time's up!", icon="🔔")
                     st.audio(get_chime_bytes(), format="audio/wav", autoplay=True)
+                    # Log the completed session to the database
+                    duration_mins = st.session_state.timer_max_seconds // 60
+                    if duration_mins > 0:
+                        log_focus_session(uid, st.session_state.timer_mode, duration_mins)
 
             mins, secs = divmod(st.session_state.timer_seconds, 60)
             st.markdown(f"<h1 style='text-align: center; color: #FF4B4B;'>{mins:02d}:{secs:02d}</h1>", unsafe_allow_html=True)
