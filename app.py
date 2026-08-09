@@ -175,7 +175,7 @@ with st.sidebar:
         # Audio Settings
         with st.expander("🔊 Audio Settings"):
             if st.button("🔔 Test Chime", use_container_width=True):
-                st.markdown(get_chime_html(), unsafe_allow_html=True)
+                st.audio(get_chime_bytes(), format="audio/wav", autoplay=True)
                 st.toast("Chime triggered!", icon="🎵")
         # Mode Selection & Callbacks
         def update_custom_time():
