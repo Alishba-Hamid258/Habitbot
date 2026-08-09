@@ -471,8 +471,25 @@ if page == "💬 Habit Coach":
                 with st.expander("📄 View Attached"): st.text(attachment.strip())
             else: st.markdown(content)
 
+    # Interactive Quick-Prompt Chips
+    prompt_to_send = None
+    if len(st.session_state.messages) <= 1:
+        st.caption("💡 Choose a quick topic or type your own question below:")
+        chip_cols = st.columns(4)
+        if chip_cols[0].button("⚡ Plan My Day", use_container_width=True):
+            prompt_to_send = "Help me plan an ultra-productive day using time-blocking and habit stacking."
+        if chip_cols[1].button("🧠 Beat Procrastination", use_container_width=True):
+            prompt_to_send = "I'm procrastinating on an important task. Guide me through the 2-minute rule to start immediately."
+        if chip_cols[2].button("💪 Morning Routine", use_container_width=True):
+            prompt_to_send = "Design an energizing 30-minute morning routine based on behavioral science."
+        if chip_cols[3].button("🎯 Habit Audit", use_container_width=True):
+            prompt_to_send = "Audit my daily habits and tell me which smallest adjustment will compound the most."
+        st.markdown("")
+
     uploaded_file = st.file_uploader("Attach context", type=["png", "jpg", "jpeg", "webp", "pdf", "txt", "md"], label_visibility="collapsed")
-    if prompt := st.chat_input("Ask about habits…"):
+    chat_input_val = st.chat_input("Ask about habits…")
+    prompt = prompt_to_send or chat_input_val
+    if prompt:
         file_payload = process_uploaded_file(uploaded_file)
         image_data = None
         final_prompt = prompt
