@@ -698,10 +698,58 @@ def get_permission_js():
 
 def get_start_beep_bytes():
     # Pleasant 660Hz tone for 0.15s to signify timer start
-    start_b64 = "UklGRtQEAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YbAEAACAtd/189irdUEaCA8uXpTH6vfsyZdgMBAIGD5yqdby9uG3gk0iCgslUYe85Pfx06RtOxYIEjRlnM3u9+jDkFkrDgkcRXqw3PT03LF7Rh0JDSpYj8Lo9+7OnWY0EwgWOmyj0vD35L2IUiUMCiFMgbfg9vPXqnM/GQgQL1+WyOv368iVXy8QCBlAdKrY8/bgtoFLIAoMJlOJveX38NKibDkVCBM1Z57O7vfnwY5XKQ0JHUd8sd319NuveUQcCQ4rWpDE6PftzJtkMxIIFjtupdTx9uO7hlAkCwoiTYO44fby1qhxPhgIETFhmMrs9+rGlF0tDwgaQnas2fP137R/SR8JDCdUi7/l9+/RoWo4FAgUNmifz+/35sCMVigNCR9IfbPe9fTarXdDGwgOLFuSxen37cuZYzIRCBc9cKfU8PTguIRQJg4PJlGFt97x7NCkcUAeDxk3ZZjF5O7gv5BfNBkUJkl4qdDm59KsfU8rGRw0XIu31+Xew5psQiUcJ0Rum8Lb4dKyiF04IyEzVX+pytzaxaJ4UDIkKkFmj7XP2dC2kWlFLig0UHadvtHUxaeCXD4uL0BfhKjE0My4mHRSOjA3TW6SssfNw6uKZ0o4NUFbfJ24x8e4nX1dRTk8TWiIprzFv6yQcVVCPERZdZOtvcC2oYRnUEJCTmSAnLG8uqyVemBNRUlYcIqis7iyoopwWkxJUWN6kqeytKqXgGlXTk9abYOZqbCtoY54ZFZRVWN2i52prKaYhXFhV1Vda36Rn6enno99bF9ZW2VzhZSgpKGXiHhpYF1hbHuKl56gmo+Bc2hiYmhzgI2XnJqUiXxxaWVnbnmFj5aYlY6EeXBqaW10foePk5OPiH93cW5ucnmBiI2QjoqEfXdzcXN3fYOIi4uKhoF8eHZ2eHt/g4aHh4WCf3x6en"
-    return base64.b64decode(start_b64)
+    import math, struct, wave
+    from io import BytesIO
+    buf = BytesIO()
+    with wave.open(buf, 'wb') as wav:
+        wav.setnchannels(1) # mono
+        wav.setsampwidth(1) # 8-bit
+        wav.setframerate(8000)
+        num_samples = int(0.15 * 8000)
+        for i in range(num_samples):
+            t = i / 8000
+            envelope = 1.0
+            if t > 0.15 - 0.05:
+                envelope = (0.15 - t) / 0.05
+            val = int(128 + 120 * envelope * math.sin(2 * math.pi * 660 * t))
+            wav.writeframesraw(struct.pack('B', val))
+    buf.seek(0)
+    return buf.read()
 
 def get_chime_bytes():
-    # Double-tone beep sequence (587Hz & 880Hz) to announce timer finish
-    end_b64 = "UklGRmQVAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YUAVAACAtd/189irdUEaCA8uXpTH6vfsyZdgMBAIGD5yqdby9uG3gk0iCgslUYe85Pfx06RtOxYIEjRlnM3u9+jDkFkrDgkcRXqw3PT03LF7Rh0JDSpYj8Lo9+7OnWY0EwgWOmyj0vD35L2IUiUMCiFMgbfg9vPXqnM/GQgQL1+WyOv368iVXy8QCBlAdKrY8/bgtoFLIQoMJlOJveX38NKibDkVCBM1Z57O7vfnwY5XKQ0JHUd7sd319NuveUQcCQ4rWpDE6PftzJtkMxIIFjtupdTx9uO7hlAkCwoiTYO44fby1qhxPhgIETFhmMrs9+rGlF0tDwgaQXas2fP137R/SR8JDCdUi7/l9+/RoWo4FAgUNmifz+/35sCMVigNCR9IfbPe9fTarXdDGwgOLFuSxen37cuZYzIRCBc9cKfV8vbiuYVPIwsLI0+FuuL28dWmcDwXCBEyY5rL7ffpxZJbLA4IG0N3rtr09d6zfUgeCQ0oVozA5vfvz59oNhQIFDhqodHw9+W+ilQnDAogSn+13/Xz2ax1QRoIDy5dlMbq9+zJmGEwEAgYPnKo1vL24biDTSIKCyRRh7vj9/HUpW47FggSM2WbzO336MOQWisOCRxFea/b9PXdsXtGHQkNKViOwuf37s6dZjUTCBU5bKPS8PfkvYlSJgwKIUuBtuD289iqdEAZCBAvX5bI6/fryJZfLxAIGUBzqtfz9uC2gUshCgwlUoi95Pfw0qNsORUIEzVmnc7u9+fCjlgqDQkdRnux3PX02695RRwJDitZkMPo9+3NnGUzEggWO26k0/H347uHUSQLCiJNg7jh9vLWqHI+GAgQMGGXyez36seUXS4PCBBdazZ8/XftX9KIAoMJ1SKvuX38NGhajgVCBQ2aJ/P7/fnwI1WKA0JHkh9s9719NqueEMbCA4sW5LF6ffty5pjMhEIFzxvptXx9uK6hU8jCwsjT4S54vby1adwPRcIETJimcvs9+nFklwsDwgbQ3et2vT13rN9SB8JDShWjMDm9+/Qn2k3FAgUOGqh0O/35r+LVCcMCR9Jf7Tf9fPZrHZCGggPLV2Uxur37MqYYTERCBg+cajW8vbhuINNIgoLJFCGu+P28dSlbjsWCBIzZJvM7ffpxJFaKw4JHER5r9v09d2xfEceCQ0pV47B5/fuzp5nNRMIFTlsotLw9+W9iVMmDAogS4C24Pbz2Kp0QBkIEC9elcjr9+vIlmAvEAgZP3Op1/L24LeBTCEKCyVSiLzk9/DTo206FggTNGadze736MKPWCoNCR1Ge7Dc9PTcsHpFHQkOKlmQw+j37s2cZTQSCBY6baTT8ffkvIdRJQsKIU2Ct+H28tepcj8YCBAwYJfJ7Pfqx5VeLg8IGkF1q9jz9d+1gEogCgwmU4q+5ffw0aJrOBUIEzZons/v9+fBjVcpDQkeR3yy3fX02654RBwIDixbkcTp9+3MmmMyEggXPG+m1PH247qGUCQLCyNOhLni9vLVp3E9GAgRMWKZyuz36saTXC0PCBtCd63a8/Xes35JHwkMKFWMv+b379CgaTcUCBQ3aaDQ7/fmv4tVJwwJH0l+tN7189mtdkIbCA8tXJPG6vfsypliMREIGD1xp9by9uK5hE4iCgskUIa64/bx1KVvPBcIEjNkm8zt9+nEkVorDggcRHiu2/T13bJ8Rx4JDSlXjcHn9+7Pnmc2EwgVOWui0fD35b6KUyYMCiBLgLXf9fPYq3VBGggPLl6Vx+v368mXYDAQCBk/c6nX8vbht4JMIQoLJVGIvOT38dOkbToWCBI0ZZzN7vfow49ZKg4JHUV6sNz09NywekYdCQ0qWY/C6PfuzZxmNBIIFjptpNPx9+S8iFIlCwohTIK34fby16lzPxkIEDBgl8nr9+vHlV4uDwgaQHSr2PP24LWASyAKDCZTib7l9/DSoms5FQgTNWeezu7358GNVykNCR5HfLLd9fTbr3lEHAgOK1qRxOn37cybZDMSCBc8b6XU8fbju4ZQJAsKIk6EueL28taocT0YCBExYZjK7PfqxpNcLQ8IGkJ2rNnz9d60fkkfCQwnVYu/5vfv0KBpNxQIFDdpoNDv9+bAjFUoDAkfSX6z3vXz2q13QhsIDy1ck8Xp9+zKmWIxEQgXPXCn1fL24rmETiMLCyNPhbrj9vHUpm88FwgRMmOay+336cSRWywOCBtDeK7a9PXdsn1HHgkNKVaNwef378+faDYTCBU4a6HR8PflvopUJwwKIEqAtd/189irdUEaCA8uXpTH6vfsyZdgMBAIGD5yqdfy9uG3gk0iCgslUYe85Pfx06RtOxYIEjRlnM3u9+jDkFkrDgkcRXqw3PT03LF7Rh0JDSpYj8Lo9+7OnWY0EwgWOmyj0vD35L2IUiUMCiFMgbfg9vPXqnM/GQgQL1+WyOv368iVXy8QCBlAdKrY8/bgtoFLIAoMJlOJveX38NKibDkVCBM1Z57O7vfnwY5XKQ0JHUd8sd319NuveUQcCQ4rWpDE6PftzJtkMxIIFjtupdTx9uO7hlAkCwoiTYO44fby1qhxPhgIETFhmMrs9+rGlF0tDwgaQnas2fP137R/SR8JDCdUi7/l9+/RoWo4FAgUNmifz+/35sCMVigNCR9IfbPe9fTarXdDGwgOLFuSxen37cuZYzIRCBc9cKbU8PTguIRQJg4PJlGFt97x7NCkcUAeDxk3ZZjF5O7gv5BfNBkUJkl4qdDm59KsfU8rGRw0XIu31+Xew5psQiUcJ0Rum8Lb4dKyiF04IyEzVX+pytzaxaJ4UDIkKkFmj7XP2dC2kWlFLig0UHadvtHUxaeCXD4uL0BfhKjE0My4mHRSOjA3TW6SssfNw6uKZ0o4NUFbfJ24x8e4nX1dRTk8TWiIprzFv6yQcVVCPERZdZOtvcC2oYRnUEJCTmSAnLG8uqyVemBNRUlYcIqis7iyoopwWkxJUWN6kqeytKqXgGlXTk9abYOZqbCtoY54ZFZRVWN2i52prKaYhXFhV1Vda36Rn6enno99bF9ZW2VzhZSgpKGXiHhpYF1hbHuKl56gmo+Bc2hiYmhzgI2XnJqUiXxxaWVnbnmFj5aYlY6EeXBqaW10foePk5OPiH93cW5ucnmBiI2QjoqEfXdzcXN3fYOIi4uKhoF8eHZ2eHt/g4aHh4WCf3x6en"
-    return base64.b64decode(end_b64)
+    # Double-tone beep sequence (587.33Hz & 880Hz) to announce timer finish
+    import math, struct, wave
+    from io import BytesIO
+    buf = BytesIO()
+    with wave.open(buf, 'wb') as wav:
+        wav.setnchannels(1)
+        wav.setsampwidth(1)
+        wav.setframerate(8000)
+        
+        # Tone 1
+        num_samples1 = int(0.3 * 8000)
+        for i in range(num_samples1):
+            t = i / 8000
+            envelope = 1.0
+            if t > 0.3 - 0.05:
+                envelope = (0.3 - t) / 0.05
+            val = int(128 + 120 * envelope * math.sin(2 * math.pi * 587.33 * t))
+            wav.writeframesraw(struct.pack('B', val))
+            
+        # Gap (Silence)
+        num_gap = int(0.08 * 8000)
+        for _ in range(num_gap):
+            wav.writeframesraw(struct.pack('B', 128))
+            
+        # Tone 2
+        num_samples2 = int(0.3 * 8000)
+        for i in range(num_samples2):
+            t = i / 8000
+            envelope = 1.0
+            if t > 0.3 - 0.05:
+                envelope = (0.3 - t) / 0.05
+            val = int(128 + 120 * envelope * math.sin(2 * math.pi * 880 * t))
+            wav.writeframesraw(struct.pack('B', val))
+            
+    buf.seek(0)
+    return buf.read()
