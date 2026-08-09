@@ -212,19 +212,19 @@ with st.sidebar:
         def timer_fragment():
             # Play start beep exactly once when starting
             if st.session_state.get("play_start_sound"):
-                st.audio(get_start_beep_bytes(), format="audio/wav", autoplay=True)
+                st.audio(get_start_beep_bytes(), format="audio/wav", autoplay=True, key=f"start_sound_{st.session_state.timer_seconds}")
                 st.session_state.play_start_sound = False
 
             if st.session_state.timer_active and st.session_state.timer_seconds > 0:
                 st.session_state.timer_seconds -= 1
                 # Play tick in the final 5 seconds (5, 4, 3, 2, 1)
                 if 1 <= st.session_state.timer_seconds <= 5:
-                    st.audio(get_tick_bytes(), format="audio/wav", autoplay=True)
+                    st.audio(get_tick_bytes(), format="audio/wav", autoplay=True, key=f"tick_sound_{st.session_state.timer_seconds}")
                 
                 if st.session_state.timer_seconds == 0:
                     st.session_state.timer_active = False
                     st.toast("⏰ Time's up!", icon="🔔")
-                    st.audio(get_chime_bytes(), format="audio/wav", autoplay=True)
+                    st.audio(get_chime_bytes(), format="audio/wav", autoplay=True, key=f"chime_sound_{st.session_state.timer_seconds}")
 
             mins, secs = divmod(st.session_state.timer_seconds, 60)
             st.markdown(f"<h1 style='text-align: center; color: #FF4B4B;'>{mins:02d}:{secs:02d}</h1>", unsafe_allow_html=True)
