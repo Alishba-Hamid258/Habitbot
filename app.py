@@ -104,12 +104,33 @@ st.markdown(get_permission_js(), unsafe_allow_html=True)
 
 # CALLBACKS (Shared between Sidebar and Main App)
 def get_callbacks(user_id):
+    def _toggle_freeze():
+        logged = get_todays_logged_habits(user_id)
+        if "❄️ Freeze Day" in logged:
+            unlog_habit(user_id, "❄️ Freeze Day")
+            st.session_state["show_unfreeze_toast"] = True
+        else:
+            log_habit(user_id, "❄️ Freeze Day", "System")
+            st.session_state["trigger_snow"] = True
+
+    def _toggle_daily(h):
+        logged = get_todays_logged_habits(user_id)
+        if h in logged:
+            unlog_habit(user_id, h)
+        else:
+            log_habit(user_id, h, "Daily Matrix")
+            # Check if all core habits are now completed for celebration
+            core = load_core_habits(user_id)
+            updated_logged = get_todays_logged_habits(user_id)
+            if core and all(item in updated_logged for item in core):
+                st.session_state["trigger_all_habits_balloons"] = True
+
     return {
         "delete_habit": lambda idx: delete_habit(user_id, idx),
-        "toggle_freeze": lambda: (unlog_habit(user_id, "❄️ Freeze Day") if "❄️ Freeze Day" in get_todays_logged_habits(user_id) else log_habit(user_id, "❄️ Freeze Day", "System")),
+        "toggle_freeze": _toggle_freeze,
         "add_core": lambda: (save_core_habits(user_id, load_core_habits(user_id) + [st.session_state.new_core_habit_in.strip()]) if st.session_state.new_core_habit_in.strip() and st.session_state.new_core_habit_in.strip() not in load_core_habits(user_id) else None),
         "delete_core": lambda idx: (save_core_habits(user_id, [h for i, h in enumerate(load_core_habits(user_id)) if i != idx])),
-        "toggle_daily": lambda h: (unlog_habit(user_id, h) if h in get_todays_logged_habits(user_id) else log_habit(user_id, h, "Daily Matrix"))
+        "toggle_daily": _toggle_daily
     }
 
 # (Insecure persistent query parameter login recovery removed for security)
@@ -279,15 +300,21 @@ with st.sidebar:
         c1.metric("🔥 Streak", f"{streak}d", help="Consecutive days you logged at least one habit")
         c2.metric("🎯 Discipline", f"{discipline}%", help="% of the last 30 days you were active")
 
-        # Contextual tip
+        # Contextual tip & Milestone Badges
         if streak == 0 and discipline == 0:
             st.caption("💡 Check off a habit below to start your streak!")
+        elif streak >= 30:
+            st.success(f"👑 **{streak}-Day Legend Streak!** Truly elite discipline!", icon="👑")
+        elif streak >= 14:
+            st.success(f"⚡ **{streak}-Day Master Streak!** 2 unbroken weeks — habits are identity!", icon="⚡")
         elif streak >= 7:
-            st.success(f"🏆 {streak}-day streak — consistency is compounding!", icon="🔥")
+            st.success(f"⚔️ **{streak}-Day Warrior Streak!** 1 full week of compounding growth!", icon="🔥")
+        elif streak >= 3:
+            st.info(f"🥉 **{streak}-Day Streak!** You've got real momentum going!", icon="🚀")
         elif streak >= 1:
             st.caption(f"🔥 {streak}-day streak — check today's habits to keep it alive!")
         if discipline >= 80:
-            st.caption(f"⭐ Elite discipline ({discipline}%) — you're in the top tier!")
+            st.caption(f"⭐ Elite discipline ({discipline}%) — top tier consistency!")
         elif discipline >= 50:
             st.caption(f"📈 {discipline}% discipline — solid! Push for 80%+ this month.")
 
@@ -417,6 +444,16 @@ with st.container():
         st.markdown(f"<p style='text-align:right; margin:0;'>🎮 <b>Lv.{xp_info['level']}</b> ({xp_info['total_xp']} XP) | 🔥 {get_current_streak(uid)}d | 🎯 {get_consistency_score(uid)}%</p>", unsafe_allow_html=True)
 
 st.markdown("---")
+
+# Milestone & Action Celebrations
+if st.session_state.pop("trigger_snow", False):
+    st.snow()
+    st.toast("❄️ Day Frozen! Your streak is safely shielded without breaking.", icon="🧊")
+if st.session_state.pop("show_unfreeze_toast", False):
+    st.toast("☀️ Day Unfrozen! Welcome back to active habit tracking.", icon="☀️")
+if st.session_state.pop("trigger_all_habits_balloons", False):
+    st.balloons()
+    st.toast("🎉 Perfect Day! You've completed ALL core habits today! (+XP Earned)", icon="🏆")
 
 # PAGE DISPATCHER
 page = st.session_state.current_page
