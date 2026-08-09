@@ -611,6 +611,29 @@ elif page == "✅ To-Do List":
             st.rerun()
 
     st.markdown("---")
+    # Task Progress Metrics & Bar
+    total_tasks = len(todos)
+    completed_tasks = sum(1 for t in todos if t.get("done", False))
+    
+    if total_tasks > 0:
+        pct = int((completed_tasks / total_tasks) * 100)
+        p_col1, p_col2 = st.columns([0.7, 0.3])
+        p_col1.markdown(f"#### 📋 Progress: `{completed_tasks}/{total_tasks}` completed ({pct}%)")
+        if completed_tasks > 0:
+            if p_col2.button("🧹 Clear Completed", use_container_width=True, help="Remove all checked-off tasks"):
+                todos = [t for t in todos if not t.get("done", False)]
+                save_todos(uid, todos)
+                st.rerun()
+        st.progress(completed_tasks / total_tasks)
+        
+        if completed_tasks == total_tasks:
+            st.success("🎉 **All tasks completed!** You conquered your entire list today!", icon="🏆")
+        elif pct >= 50:
+            st.info("🔥 **Over halfway done!** Keep the momentum rolling.", icon="⚡")
+        st.markdown("")
+    else:
+        st.caption("No tasks yet. Generate tasks with the AI Architect above or add one manually!")
+
     for i, t in enumerate(todos):
         c1, c2, c3, c4 = st.columns([0.1, 0.6, 0.2, 0.1])
         t_done = t.get("done", False)
