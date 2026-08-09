@@ -72,7 +72,7 @@ def _cached_heatmap_data(user_id):
 def _cached_habit_stats(user_id):
     return get_habit_stats(user_id)
 from auth import create_user, verify_user, create_session, verify_session, destroy_session
-from db import init_db, DB_NAME
+from db import init_db, DB_NAME, get_connection
 
 # Page Config (First Streamlit call)
 st.set_page_config(page_title="HabitBot | Your Personal Coach", layout="wide", page_icon="🤖", initial_sidebar_state="expanded")
@@ -307,6 +307,27 @@ with st.sidebar:
                     col_h, col_del = st.columns([0.8, 0.2])
                     col_h.write(h)
                     col_del.button("🗑️", key=f"del_core_{i}", on_click=cb["delete_core"], args=(i,))
+                    
+        with st.expander("🔧 Database Diagnostics"):
+            import os
+            st.write(f"**DB Path:** `{os.path.abspath(DB_NAME)}`")
+            try:
+                conn = get_connection()
+                c = conn.cursor()
+                c.execute("SELECT name FROM sqlite_master WHERE type='table';")
+                tables = [r[0] for r in c.fetchall()]
+                conn.close()
+                st.write(f"**Tables:** {tables}")
+            except Exception as e:
+                st.error(f"Error reading tables: {e}")
+                
+            if st.button("Force Re-init DB", use_container_width=True):
+                try:
+                    init_db()
+                    st.success("Database initialized successfully!")
+                    st.rerun()
+                except Exception as ex:
+                    st.error(f"Init failed: {ex}")
                     
         # Persistent Background Music/Video Player
         st.markdown("---")
