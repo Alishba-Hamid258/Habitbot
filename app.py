@@ -153,6 +153,9 @@ with st.sidebar:
                     pass
                 st.session_state.user_id = None
                 st.session_state.logout_triggered = True
+                # Clear chat history so next user doesn't see previous user's messages
+                st.session_state.pop("messages", None)
+                st.session_state.pop("_messages_loaded_for", None)
                 try: 
                     cookie_manager.set("habitbot_v4_session", "None") # Explicitly invalidate
                     cookie_manager.delete("habitbot_v4_session")
@@ -380,9 +383,11 @@ st.markdown("---")
 
 # PAGE DISPATCHER
 page = st.session_state.current_page
-if "messages" not in st.session_state:
+# Re-load history whenever the active user changes (prevents cross-user bleed)
+if "messages" not in st.session_state or st.session_state.get("_messages_loaded_for") != uid:
     saved = load_history(uid)
     st.session_state.messages = saved if saved else [{"role": "system", "content": SYSTEM_PROMPT}]
+    st.session_state._messages_loaded_for = uid
 
 if page == "💬 Habit Coach":
     if "view_archive" not in st.session_state: st.session_state.view_archive = None
