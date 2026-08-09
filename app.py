@@ -540,6 +540,9 @@ with tab_coach:
         
         st.markdown("---")
         
+        # Check for pending prompt from chips
+        chip_prompt = st.session_state.pop("chip_prompt", None)
+        
         # 1. Main Chat Container (Always placed ABOVE input widgets)
         chat_container = st.container()
         
@@ -555,25 +558,28 @@ with tab_coach:
                         with st.expander("📄 View Attached"): st.text(attachment.strip())
                     else: st.markdown(content)
 
-        # 2. Interactive Quick-Prompt Chips (Only shown when starting a fresh chat)
-        prompt_to_send = None
-        if len(st.session_state.messages) <= 1:
-            st.caption("💡 Choose a quick topic or type your own question below:")
-            chip_cols = st.columns(4)
-            if chip_cols[0].button("⚡ Plan My Day", use_container_width=True):
-                prompt_to_send = "Help me plan an ultra-productive day using time-blocking and habit stacking."
-            if chip_cols[1].button("🧠 Beat Procrastination", use_container_width=True):
-                prompt_to_send = "I'm procrastinating on an important task. Guide me through the 2-minute rule to start immediately."
-            if chip_cols[2].button("💪 Morning Routine", use_container_width=True):
-                prompt_to_send = "Design an energizing 30-minute morning routine based on behavioral science."
-            if chip_cols[3].button("🎯 Habit Audit", use_container_width=True):
-                prompt_to_send = "Audit my daily habits and tell me which smallest adjustment will compound the most."
-            st.markdown("")
+            # 2. Interactive Quick-Prompt Chips (Only shown on empty chat and when no chip is active)
+            if len(st.session_state.messages) <= 1 and not chip_prompt:
+                st.caption("💡 Choose a quick topic or type your own question below:")
+                chip_cols = st.columns(4)
+                if chip_cols[0].button("⚡ Plan My Day", use_container_width=True, key="chip_btn_1"):
+                    st.session_state.chip_prompt = "Help me plan an ultra-productive day using time-blocking and habit stacking."
+                    st.rerun()
+                if chip_cols[1].button("🧠 Beat Procrastination", use_container_width=True, key="chip_btn_2"):
+                    st.session_state.chip_prompt = "I'm procrastinating on an important task. Guide me through the 2-minute rule to start immediately."
+                    st.rerun()
+                if chip_cols[2].button("💪 Morning Routine", use_container_width=True, key="chip_btn_3"):
+                    st.session_state.chip_prompt = "Design an energizing 30-minute morning routine based on behavioral science."
+                    st.rerun()
+                if chip_cols[3].button("🎯 Habit Audit", use_container_width=True, key="chip_btn_4"):
+                    st.session_state.chip_prompt = "Audit my daily habits and tell me which smallest adjustment will compound the most."
+                    st.rerun()
+                st.markdown("")
 
         # 3. Input Controls (Always placed BELOW chat_container at the bottom)
         uploaded_file = st.file_uploader("Attach context", type=["png", "jpg", "jpeg", "webp", "pdf", "txt", "md"], label_visibility="collapsed")
         chat_input_val = st.chat_input("Ask about habits…")
-        prompt = prompt_to_send or chat_input_val
+        prompt = chip_prompt or chat_input_val
         
         if prompt:
             file_payload = process_uploaded_file(uploaded_file)
