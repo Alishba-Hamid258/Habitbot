@@ -18,6 +18,8 @@ if "api" in sys.modules:
     importlib.reload(sys.modules["api"])
 if "utils" in sys.modules:
     importlib.reload(sys.modules["utils"])
+if "db" in sys.modules:
+    importlib.reload(sys.modules["db"])
 
 from api import call_llm
 from config import SYSTEM_PROMPT, ARCHITECT_PROMPT
