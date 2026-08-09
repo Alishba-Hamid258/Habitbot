@@ -638,7 +638,7 @@ elif page == "📚 Library":
             {"title": "Atomic Habits Summary", "url": "https://www.youtube.com/watch?v=PZ7lDrwYdZc"},
             {"title": "Deep Work Masterclass", "url": "https://www.youtube.com/watch?v=3E7hkPZ-HTk"},
             {"title": "The Science of Habits", "url": "https://www.youtube.com/watch?v=Wcs2PFz5q6g"},
-            {"title": "Mindset of a Champion", "url": "https://www.youtube.com/watch?v=yY_1v3YnF3w"},
+            {"title": "Forget Big Change (Tiny Habits)", "url": "https://www.youtube.com/watch?v=AdKUJxjn-R8"},
             {"title": "Optimal Daily Routine", "url": "https://www.youtube.com/watch?v=S9DdUhLLdlM"}
         ]
         # 2-column grid for videos
