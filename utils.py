@@ -480,20 +480,202 @@ def process_uploaded_file(uploaded_file):
     return None
 
 # ================================
-# NOTIFICATIONS & ALERTS
+    streak = 0
+    current_check_date = today
+    if today not in logged_dates and yesterday in logged_dates:
+        current_check_date = yesterday
+    if current_check_date not in logged_dates: return 0
+    for i in range(len(logged_dates)):
+        expected_date = (datetime.strptime(current_check_date, "%Y-%m-%d") - pd.Timedelta(days=i)).strftime("%Y-%m-%d")
+        if logged_dates[i] == expected_date: streak += 1
+        else: break
+    return streak
+
+def get_consistency_score(user_id):
+    conn = get_connection()
+    c = conn.cursor()
+    end_date = datetime.now()
+    start_date = end_date - pd.Timedelta(days=30)
+    c.execute("SELECT date FROM habits_log WHERE user_id = ? AND date >= ?", (user_id, start_date.strftime('%Y-%m-%d')))
+    rows = c.fetchall()
+    conn.close()
+    logged_days = set()
+    for r in rows:
+        try:
+            d = pd.to_datetime(r[0].split(' ')[0])
+            logged_days.add(d.strftime('%Y-%m-%d'))
+        except: pass
+    return int((len(logged_days) / 30.0) * 100)
+
+def get_heatmap_data(user_id):
+    conn = get_connection()
+    end_date = datetime.now()
+    start_date = end_date - pd.Timedelta(days=364)
+    
+    query = "SELECT date FROM habits_log WHERE user_id = ? AND date >= ?"
+    df_logs = pd.read_sql_query(query, conn, params=(user_id, start_date.strftime('%Y-%m-%d')))
+    conn.close()
+    
+    all_days = pd.date_range(start=start_date, end=end_date, freq='D').date
+    full_range = pd.DataFrame({'date': all_days})
+
+    if df_logs.empty:
+        full_range['count'] = 0
+        return full_range
+
+    df_logs['date'] = pd.to_datetime(df_logs['date']).dt.date
+    daily_counts = df_logs.groupby('date').size().reset_index(name='count')
+    
+    heatmap_df = pd.merge(full_range, daily_counts, on='date', how='left').fillna(0)
+    return heatmap_df
+
+def get_user_badges(user_id):
+    badges = []
+    streak = get_current_streak(user_id)
+    if streak >= 3: badges.append("🔥 3-Day Starter")
+    if streak >= 7: badges.append("⚔️ 7-Day Warrior")
+    if streak >= 30: badges.append("👑 30-Day Legend")
+    score = get_consistency_score(user_id)
+    if score >= 80: badges.append("🎯 High Consistency")
+    return badges
+
+def get_habit_stats(user_id):
+    conn = get_connection()
+    df = pd.read_sql_query("SELECT date, habit, category FROM habits_log WHERE user_id = ?", conn, params=(user_id,))
+    conn.close()
+    if df.empty: return None, None, None
+    df['date'] = pd.to_datetime(df['date'])
+    df['day'] = df['date'].dt.date
+    daily = df.groupby('day').size().reset_index(name='count')
+    df['week'] = df['date'].dt.to_period('W').apply(lambda r: r.start_time)
+    weekly = df.groupby('week').size().reset_index(name='count')
+    df['month'] = df['date'].dt.to_period('M').apply(lambda r: r.start_time)
+    monthly = df.groupby('month').size().reset_index(name='count')
+    return daily, weekly, monthly
+
+def get_weekly_summary(user_id):
+    end_date = datetime.now()
+    start_date = end_date - pd.Timedelta(days=7)
+    summary_lines = []
+    summary_lines.append(f"Date Range: {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}")
+    conn = get_connection()
+    c = conn.cursor()
+    c.execute("SELECT habit FROM habits_log WHERE user_id = ? AND date >= ?", (user_id, start_date.strftime('%Y-%m-%d')))
+    recent_habits = c.fetchall()
+    habit_counts = {}
+    for h in recent_habits:
+        habit_counts[h[0]] = habit_counts.get(h[0], 0) + 1
+    summary_lines.append("\n--- HABITS COMPLETED THIS WEEK ---")
+    if habit_counts:
+        for habit, count in habit_counts.items(): summary_lines.append(f"- {habit}: {count} times")
+    else: summary_lines.append("No habits logged this week.")
+    c.execute("SELECT task, priority, done FROM todos WHERE user_id = ?", (user_id,))
+    todos = c.fetchall()
+    done_todos = [t for t in todos if t[2]]
+    pending_todos = [t for t in todos if not t[2]]
+    summary_lines.append("\n--- CURRENT TO-DO LIST STATUS ---")
+    summary_lines.append(f"Completed Tasks: {len(done_todos)}")
+    summary_lines.append(f"Pending Tasks: {len(pending_todos)}")
+    if pending_todos:
+        summary_lines.append("Top Pending Tasks:")
+        for t in pending_todos[:3]: summary_lines.append(f"- {t[0]} (Priority: {t[1]})")
+    c.execute("SELECT SUM(duration_mins) FROM focus_sessions WHERE user_id = ? AND date >= ? AND mode LIKE '%Focus%'", (user_id, start_date.strftime('%Y-%m-%d')))
+    total_focus = c.fetchone()[0] or 0
+    summary_lines.append(f"\n--- DEEP WORK ---")
+    summary_lines.append(f"Total Focus Time this week: {total_focus} minutes")
+    c.execute("SELECT date, went_well, friction FROM reflections WHERE user_id = ? AND date >= ?", (user_id, start_date.strftime('%Y-%m-%d')))
+    reflections = c.fetchall()
+    conn.close()
+    if reflections:
+        summary_lines.append("\n--- END OF DAY REFLECTIONS ---")
+        for r in reflections:
+            summary_lines.append(f"Date: {r[0]}")
+            summary_lines.append(f"  Went Well: {r[1]}")
+            summary_lines.append(f"  Friction: {r[2]}")
+    return "\n".join(summary_lines)
+
+def log_focus_session(user_id, mode, duration_mins):
+    conn = get_connection()
+    c = conn.cursor()
+    date_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    c.execute("INSERT INTO focus_sessions (user_id, date, mode, duration_mins) VALUES (?, ?, ?, ?)", (user_id, date_str, mode, duration_mins))
+    conn.commit()
+    conn.close()
+
+def get_total_focus_time(user_id, period="today"):
+    conn = get_connection()
+    c = conn.cursor()
+    if period == "today":
+        target = datetime.now().strftime("%Y-%m-%d")
+        c.execute("SELECT SUM(duration_mins) FROM focus_sessions WHERE user_id = ? AND date LIKE ? AND mode LIKE '%Focus%'", (user_id, f"{target}%"))
+    else:
+        c.execute("SELECT SUM(duration_mins) FROM focus_sessions WHERE user_id = ? AND mode LIKE '%Focus%'", (user_id,))
+    row = c.fetchone()
+    conn.close()
+    return row[0] if row[0] else 0
+
+def generate_life_audit(user_id):
+    conn = get_connection()
+    tables = {
+        "Habits": "SELECT date, habit, category FROM habits_log WHERE user_id = ?",
+        "Focus": "SELECT date, mode, duration_mins FROM focus_sessions WHERE user_id = ?",
+        "Tasks": "SELECT task, priority, time, done FROM todos WHERE user_id = ?",
+        "Reflections": "SELECT date, went_well, friction FROM reflections WHERE user_id = ?",
+        "Chat History": "SELECT timestamp, session_name, role, content FROM chat_archives WHERE user_id = ?"
+    }
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        for sheet_name, query in tables.items():
+            df = pd.read_sql_query(query, conn, params=(user_id,))
+            df.to_excel(writer, sheet_name=sheet_name, index=False)
+    conn.close()
+    return output.getvalue()
+
 # ================================
-def get_notification_js(title, body):
-    safe_body = body.replace('"', '\\"')
-    return f"""<div style="display:none;"><script>if (Notification.permission === "granted") {{ new Notification("{title}", {{ body: "{safe_body}", icon: "https://cdn-icons-png.flaticon.com/512/190/190411.png" }}); }}</script></div>"""
+# FILE PROCESSING (VISION & DOCS)
+# ================================
+def encode_image(image_file):
+    image_file.seek(0)
+    return base64.b64encode(image_file.read()).decode("utf-8")
 
-def get_permission_js():
-    return """<div style="display:none;"><script>if (Notification.permission !== "granted" && Notification.permission !== "denied") {{ Notification.requestPermission(); }}</script></div>"""
+def extract_text_from_pdf(pdf_file):
+    try:
+        pdf_file.seek(0)
+        reader = PyPDF2.PdfReader(pdf_file)
+        text = ""
+        for page in reader.pages:
+            text += page.extract_text() + "\n"
+        return text
+    except Exception as e:
+        return f"Error parsing PDF: {e}"
 
-def get_chime_html():
-    # Verified Base64 short beep to ensure reliable playback without external CDNs
-    beep_b64 = "UklGRsQPAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YaAPAAB/2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th+JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV/2P7YfyUAJX7Y/th/JQAlftj+2H4lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfiUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV/2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th+JQAlf9j+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX/Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfiUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H4lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV/2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H4lACV/2P7YfiUAJX/Y/th+JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlf9j+2H4lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX/Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th+JQAlf9j+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV/2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlf9j+2H8lACV+2P7YfyUAJX/Y/th/JQAlf9j+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th+JQAlftj+2H4lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfiUAJX7Y/th+JQAlftj+2H4lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX/Y/th/JQAlf9j+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlf9j+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfiUAJX7Y/th+JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX/Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H4lACV+2P7YfiUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th+JQAlftj+2H8lACV+2P7YfiUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV/2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX/Y/th+JQAlftj+2H8lACV+2P7YfiUAJX7Y/th/JQAlf9j+2H8lACV+2P7YfyUAJX/Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th+JQAlftj+2H4lACV+2P7YfyUAJX7Y/th/JQAlftj+2H4lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlf9j+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX/Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlf9j+2H8lACV+2P7YfiUAJX7Y/th/JQAlftj+2H4lACV+2P7YfyUAJX7Y/th+JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlf9j+2H8lACV+2P7YfyUAJX/Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX/Y/th/JQAlftj+2H4lACV+2P7YfyUAJX7Y/th+JQAlftj+2H8lACV+2P7YfiUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX/Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAlftj+2H8lACV+2P7YfyUAJX7Y/th/JQAl"
-    return f"""<div style="display:none;"><audio id="chime-audio" src="data:audio/wav;base64,{beep_b64}"></audio><script>document.getElementById('chime-audio').play().catch(e => console.log('Audio play failed:', e));</script></div>"""
+def process_uploaded_file(uploaded_file):
+    if uploaded_file is None:
+        return None
+    file_name = uploaded_file.name.lower()
+    if file_name.endswith(('.png', '.jpg', '.jpeg', '.webp')):
+        return {"type": "image", "data": encode_image(uploaded_file)}
+    
+    text_data = None
+    if file_name.endswith('.pdf'):
+        text_data = extract_text_from_pdf(uploaded_file)
+    elif file_name.endswith(('.txt', '.md', '.csv')):
+        uploaded_file.seek(0)
+        try:
+            text_data = uploaded_file.read().decode("utf-8")
+        except Exception as e:
+            text_data = f"Error reading text file: {e}"
+            
+    if text_data is not None:
+        max_char_limit = 8000
+        if len(text_data) > max_char_limit:
+            text_data = text_data[:max_char_limit] + "\n\n[CONTEXT TRUNCATED DUE TO SIZE LIMITATION]"
+        return {"type": "text", "data": text_data}
+        
+    return None
 
+# ================================
+# NOTIFICATIONS & ALERTS
 def get_ticking_html():
     # Return empty string to disable ticking as requested
     return ""
@@ -506,3 +688,20 @@ def get_prime_audio_js():
             a.play().catch(() => {});
         }
     </script>"""
+
+def get_notification_js(title, body):
+    safe_body = body.replace('"', '\\"')
+    return f"""<div style="display:none;"><script>if (Notification.permission === "granted") {{ new Notification("{title}", {{ body: "{safe_body}", icon: "https://cdn-icons-png.flaticon.com/512/190/190411.png" }}); }}</script></div>"""
+
+def get_permission_js():
+    return """<div style="display:none;"><script>if (Notification.permission !== "granted" && Notification.permission !== "denied") { Notification.requestPermission(); }</script></div>"""
+
+def get_start_beep_html():
+    # Pleasant 660Hz tone for 0.15s to signify timer start
+    start_b64 = "UklGRtQEAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YbAEAACAtd/189irdUEaCA8uXpTH6vfsyZdgMBAIGD5yqdby9uG3gk0iCgslUYe85Pfx06RtOxYIEjRlnM3u9+jDkFkrDgkcRXqw3PT03LF7Rh0JDSpYj8Lo9+7OnWY0EwgWOmyj0vD35L2IUiUMCiFMgbfg9vPXqnM/GQgQL1+WyOv368iVXy8QCBlAdKrY8/bgtoFLIAoMJlOJveX38NKibDkVCBM1Z57O7vfnwY5XKQ0JHUd8sd319NuveUQcCQ4rWpDE6PftzJtkMxIIFjtupdTx9uO7hlAkCwoiTYO44fby1qhxPhgIETFhmMrs9+rGlF0tDwgaQnas2fP137R/SR8JDCdUi7/l9+/RoWo4FAgUNmifz+/35sCMVigNCR9IfbPe9fTarXdDGwgOLFuSxen37cuZYzIRCBc9cKfU8PTguIRQJg4PJlGFt97x7NCkcUAeDxk3ZZjF5O7gv5BfNBkUJkl4qdDm59KsfU8rGRw0XIu31+Xew5psQiUcJ0Rum8Lb4dKyiF04IyEzVX+pytzaxaJ4UDIkKkFmj7XP2dC2kWlFLig0UHadvtHUxaeCXD4uL0BfhKjE0My4mHRSOjA3TW6SssfNw6uKZ0o4NUFbfJ24x8e4nX1dRTk8TWiIprzFv6yQcVVCPERZdZOtvcC2oYRnUEJCTmSAnLG8uqyVemBNRUlYcIqis7iyoopwWkxJUWN6kqeytKqXgGlXTk9abYOZqbCtoY54ZFZRVWN2i52prKaYhXFhV1Vda36Rn6enno99bF9ZW2VzhZSgpKGXiHhpYF1hbHuKl56gmo+Bc2hiYmhzgI2XnJqUiXxxaWVnbnmFj5aYlY6EeXBqaW10foePk5OPiH93cW5ucnmBiI2QjoqEfXdzcXN3fYOIi4uKhoF8eHZ2eHt/g4aHh4WCf3x6en"
+    return f"""<div style="display:none;"><audio id="start-audio" src="data:audio/wav;base64,{start_b64}"></audio><script>document.getElementById('start-audio').play().catch(e => console.log('Start Audio failed:', e));</script></div>"""
+
+def get_chime_html():
+    # Double-tone beep sequence (587Hz & 880Hz) to announce timer finish
+    end_b64 = "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"
+    return f"""<div style="display:none;"><audio id="chime-audio" src="data:audio/wav;base64,{end_b64}"></audio><script>document.getElementById('chime-audio').play().catch(e => console.log('Chime Audio failed:', e));</script></div>"""

@@ -29,7 +29,7 @@ from utils import (
     process_uploaded_file, get_notification_js, get_permission_js,
     log_focus_session, get_total_focus_time, get_heatmap_data, generate_life_audit,
     archive_current_chat, get_chat_archives, get_archived_messages, delete_chat_archive,
-    get_chime_html, get_ticking_html, get_prime_audio_js
+    get_chime_html, get_ticking_html, get_prime_audio_js, get_start_beep_html
 )
 
 def extract_json_from_text(text):
@@ -92,6 +92,7 @@ if "timer_active" not in st.session_state: st.session_state.timer_active = False
 if "timer_seconds" not in st.session_state: st.session_state.timer_seconds = 1500
 if "timer_max_seconds" not in st.session_state: st.session_state.timer_max_seconds = 1500
 if "sb_adj_mins" not in st.session_state: st.session_state.sb_adj_mins = 25
+if "play_start_sound" not in st.session_state: st.session_state.play_start_sound = False
 if "lib_custom_url" not in st.session_state: st.session_state.lib_custom_url = ""
 
 # GLOBAL SETUP
@@ -210,6 +211,11 @@ with st.sidebar:
         # Fragment for Countdown
         @st.fragment(run_every="1s")
         def timer_fragment():
+            # Play start beep exactly once when starting
+            if st.session_state.get("play_start_sound"):
+                st.markdown(get_start_beep_html(), unsafe_allow_html=True)
+                st.session_state.play_start_sound = False
+
             if st.session_state.timer_active and st.session_state.timer_seconds > 0:
                 st.session_state.timer_seconds -= 1
                 if st.session_state.timer_seconds == 0:
@@ -229,6 +235,7 @@ with st.sidebar:
                 if st.button("🚀 Start Timer", use_container_width=True, key="sb_start"): 
                     st.markdown("<script>window.primeAudio();</script>", unsafe_allow_html=True)
                     st.session_state.timer_active = True
+                    st.session_state.play_start_sound = True
                     st.rerun()
         
         timer_fragment()
