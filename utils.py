@@ -621,63 +621,75 @@ def log_media_if_new(user_id, url):
     import urllib.parse
     import json
     
-    title = "Unknown YouTube Video"
+    title = "YouTube Video"
     try:
-        req_url = f"https://www.youtube.com/oembed?url={urllib.parse.quote(url)}&format=json"
-        with urllib.request.urlopen(req_url, timeout=3) as response:
+        req_url = f"https://www.youtube.com/oembed?url={urllib.parse.quote(url, safe=':/?=')}&format=json"
+        req = urllib.request.Request(req_url, headers={'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req, timeout=3) as response:
             data = json.loads(response.read().decode())
-            title = data.get("title", "Unknown YouTube Video")
+            title = data.get("title", "YouTube Video")
     except Exception:
         pass
         
     # 3. Log to DB if it's different from the most recent entry to prevent duplicate spams
-    conn = get_connection()
-    c = conn.cursor()
-    c.execute("SELECT url FROM media_history WHERE user_id = ? ORDER BY id DESC LIMIT 1", (user_id,))
-    row = c.fetchone()
-    if not row or row[0] != url:
-        date_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        c.execute("INSERT INTO media_history (user_id, date, url, title) VALUES (?, ?, ?, ?)", (user_id, date_str, url, title))
-        conn.commit()
-    conn.close()
+    try:
+        conn = get_connection()
+        c = conn.cursor()
+        c.execute('''CREATE TABLE IF NOT EXISTS media_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
+            date TEXT,
+            url TEXT,
+            title TEXT
+        )''')
+        c.execute("SELECT url FROM media_history WHERE user_id = ? ORDER BY id DESC LIMIT 1", (user_id,))
+        row = c.fetchone()
+        if not row or row[0] != url:
+            date_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            c.execute("INSERT INTO media_history (user_id, date, url, title) VALUES (?, ?, ?, ?)", (user_id, date_str, url, title))
+            conn.commit()
+        conn.close()
+    except Exception:
+        pass
     
     # Cache the logged URL to session state to prevent immediate reruns from re-logging
     st.session_state.last_logged_url = url
 
 def generate_life_audit(user_id):
-    import sqlite3 as _sqlite3
     conn = get_connection()
-    # Ensure media_history table exists (inline creation to bypass any caching)
-    try:
-        conn.execute('''
-            CREATE TABLE IF NOT EXISTS media_history (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER,
-                date TEXT,
-                url TEXT,
-                title TEXT,
-                FOREIGN KEY(user_id) REFERENCES users(id)
-            )
-        ''')
-        conn.commit()
-    except Exception:
-        pass
+    c = conn.cursor()
+    # Explicitly ensure all tables exist
+    for tbl_sql in [
+        "CREATE TABLE IF NOT EXISTS habits_log (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, date TEXT, habit TEXT, category TEXT)",
+        "CREATE TABLE IF NOT EXISTS focus_sessions (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, date TEXT, mode TEXT, duration_mins INTEGER)",
+        "CREATE TABLE IF NOT EXISTS todos (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, task TEXT, priority TEXT, time TEXT, done INTEGER)",
+        "CREATE TABLE IF NOT EXISTS reflections (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, date TEXT, went_well TEXT, friction TEXT)",
+        "CREATE TABLE IF NOT EXISTS chat_archives (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, session_id TEXT, session_name TEXT, role TEXT, content TEXT, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)",
+        "CREATE TABLE IF NOT EXISTS media_history (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, date TEXT, url TEXT, title TEXT)"
+    ]:
+        try:
+            c.execute(tbl_sql)
+        except Exception:
+            pass
+    conn.commit()
 
     tables = {
-        "Habits": "SELECT date, habit, category FROM habits_log WHERE user_id = ?",
-        "Focus": "SELECT date, mode, duration_mins FROM focus_sessions WHERE user_id = ?",
-        "Tasks": "SELECT task, priority, time, done FROM todos WHERE user_id = ?",
-        "Reflections": "SELECT date, went_well, friction FROM reflections WHERE user_id = ?",
-        "Chat History": "SELECT timestamp, session_name, role, content FROM chat_archives WHERE user_id = ?",
-        "Media History": "SELECT date, title, url FROM media_history WHERE user_id = ?"
+        "Habits": ("SELECT date, habit, category FROM habits_log WHERE user_id = ?", ["date", "habit", "category"]),
+        "Focus": ("SELECT date, mode, duration_mins FROM focus_sessions WHERE user_id = ?", ["date", "mode", "duration_mins"]),
+        "Tasks": ("SELECT task, priority, time, done FROM todos WHERE user_id = ?", ["task", "priority", "time", "done"]),
+        "Reflections": ("SELECT date, went_well, friction FROM reflections WHERE user_id = ?", ["date", "went_well", "friction"]),
+        "Chat History": ("SELECT timestamp, session_name, role, content FROM chat_archives WHERE user_id = ?", ["timestamp", "session_name", "role", "content"]),
+        "Media History": ("SELECT date, title, url FROM media_history WHERE user_id = ?", ["date", "title", "url"])
     }
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        for sheet_name, query in tables.items():
+        for sheet_name, (query, cols) in tables.items():
             try:
                 df = pd.read_sql_query(query, conn, params=(user_id,))
             except Exception:
-                df = pd.DataFrame()  # Empty sheet if table doesn't exist
+                df = pd.DataFrame(columns=cols)
+            if df.empty:
+                df = pd.DataFrame(columns=cols)
             df.to_excel(writer, sheet_name=sheet_name, index=False)
     conn.close()
     return output.getvalue()
