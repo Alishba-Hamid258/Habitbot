@@ -179,6 +179,7 @@ with st.sidebar:
             mins = st.session_state.sb_adj_mins
             st.session_state.timer_seconds = mins * 60
             st.session_state.timer_max_seconds = mins * 60
+            st.session_state.timer_mode = st.session_state.get("sb_custom_name", "Focus").strip() or "Focus"
             st.session_state.timer_active = False
 
         m_cols = st.columns(3)
@@ -205,7 +206,9 @@ with st.sidebar:
             st.rerun()
 
         # Custom Adjustment
-        st.number_input("Minutes", min_value=1, max_value=120, step=1, key="sb_adj_mins", on_change=update_custom_time)
+        c_time, c_name = st.columns([0.4, 0.6])
+        c_time.number_input("Mins", min_value=1, max_value=120, step=1, key="sb_adj_mins", on_change=update_custom_time)
+        c_name.text_input("Name", value="Focus", key="sb_custom_name", on_change=update_custom_time, help="Name your session (e.g. 'Coding', 'Reading')")
 
         # Fragment for Countdown
         @st.fragment(run_every="1s")
@@ -235,8 +238,12 @@ with st.sidebar:
                     st.audio(get_chime_bytes(), format="audio/wav", autoplay=True)
                     # Log the completed session to the database
                     duration_mins = st.session_state.timer_max_seconds // 60
+                    # Ensure we use the custom name if the user set one, otherwise fallback to timer_mode
+                    final_mode = st.session_state.get("sb_custom_name", "").strip()
+                    if not final_mode: final_mode = st.session_state.timer_mode
+                    
                     if duration_mins > 0:
-                        log_focus_session(uid, st.session_state.timer_mode, duration_mins)
+                        log_focus_session(uid, final_mode, duration_mins)
 
             mins, secs = divmod(st.session_state.timer_seconds, 60)
             st.markdown(f"<h1 style='text-align: center; color: #FF4B4B;'>{mins:02d}:{secs:02d}</h1>", unsafe_allow_html=True)
