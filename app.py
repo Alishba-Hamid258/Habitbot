@@ -539,13 +539,33 @@ with tab_coach:
     if "view_archive" not in st.session_state: st.session_state.view_archive = None
 
     if st.session_state.view_archive:
-        col_back, col_title = st.columns([0.3, 0.7])
+        arch = st.session_state.view_archive
+        arch_sid = arch.get("sid") if isinstance(arch, dict) else None
+        arch_msgs = arch.get("messages", []) if isinstance(arch, dict) else arch
+        
+        col_back, col_resume, col_title = st.columns([0.25, 0.35, 0.4])
         if col_back.button("⬅️ Back to Active Chat", use_container_width=True):
             st.session_state.view_archive = None
             st.rerun()
+            
+        if col_resume.button("🔄 Resume This Chat", use_container_width=True, type="primary"):
+            if len(st.session_state.messages) > 1:
+                archive_current_chat(uid, st.session_state.messages)
+            if arch_msgs:
+                st.session_state.messages = arch_msgs
+                save_history(uid, arch_msgs)
+                if arch_sid:
+                    delete_chat_archive(uid, arch_sid)
+            st.session_state.view_archive = None
+            st.toast("🔄 Chat resumed! You can now continue the conversation.", icon="💬")
+            st.rerun()
+            
         col_title.markdown("### 📜 Archived Session")
-        for m in st.session_state.view_archive[1:]:
-            with st.chat_message(m["role"]): st.markdown(m["content"])
+        st.markdown("---")
+        for m in arch_msgs[1:]:
+            avatar = "🤖" if m["role"] == "assistant" else "👤"
+            with st.chat_message(m["role"], avatar=avatar):
+                st.markdown(m["content"])
     else:
         col1, col2 = st.columns([0.7, 0.3])
         col1.markdown("### 💬 Habit Coach")
@@ -559,9 +579,24 @@ with tab_coach:
             archives = get_chat_archives(uid)
             if archives:
                 for sid, name, ts in archives:
-                    arch_col, del_col = st.columns([0.85, 0.15])
+                    arch_col, resume_col, del_col = st.columns([0.65, 0.23, 0.12])
                     if arch_col.button(f"📄 {ts} | {name}", key=f"arch_{sid}", use_container_width=True):
-                        st.session_state.view_archive = get_archived_messages(uid, sid)
+                        st.session_state.view_archive = {
+                            "sid": sid,
+                            "name": name,
+                            "messages": get_archived_messages(uid, sid)
+                        }
+                        st.rerun()
+                    if resume_col.button("🔄 Resume", key=f"res_{sid}", use_container_width=True):
+                        if len(st.session_state.messages) > 1:
+                            archive_current_chat(uid, st.session_state.messages)
+                        old_msgs = get_archived_messages(uid, sid)
+                        if old_msgs:
+                            st.session_state.messages = old_msgs
+                            save_history(uid, old_msgs)
+                            delete_chat_archive(uid, sid)
+                        st.session_state.view_archive = None
+                        st.toast("🔄 Chat resumed! Continue asking questions.", icon="💬")
                         st.rerun()
                     if del_col.button("🗑️", key=f"del_{sid}"):
                         delete_chat_archive(uid, sid)
