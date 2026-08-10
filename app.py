@@ -198,7 +198,7 @@ with st.sidebar:
         with st.container(border=True):
             c1, c2 = st.columns([0.3, 0.7])
             c1.markdown("### 👤")
-            c2.markdown(f"**{current_username}**")
+            c2.markdown(f"**{current_username}**  \n`ID: #{uid}`")
             if st.button("Logout", use_container_width=True):
                 try:
                     cookie_val = cookie_manager.get("habitbot_v4_session")
