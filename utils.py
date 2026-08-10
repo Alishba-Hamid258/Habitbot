@@ -849,6 +849,27 @@ def log_media_if_new(user_id, url):
     # Cache the logged URL to session state to prevent immediate reruns from re-logging
     st.session_state.last_logged_url = url
 
+def get_latest_media_url(user_id):
+    """Retrieve the last played custom YouTube URL for the user to persist playback across refreshes."""
+    if not user_id:
+        return ""
+    try:
+        conn = get_connection()
+        c = conn.cursor()
+        c.execute('''CREATE TABLE IF NOT EXISTS media_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
+            date TEXT,
+            url TEXT,
+            title TEXT
+        )''')
+        c.execute("SELECT url FROM media_history WHERE user_id = ? ORDER BY id DESC LIMIT 1", (user_id,))
+        row = c.fetchone()
+        conn.close()
+        return row[0] if row and row[0] else ""
+    except Exception:
+        return ""
+
 def generate_life_audit(user_id):
     conn = get_connection()
     c = conn.cursor()

@@ -34,7 +34,7 @@ from utils import (
     archive_current_chat, get_chat_archives, get_archived_messages, delete_chat_archive,
     get_chime_bytes, get_ticking_html, get_start_beep_bytes, get_tick_bytes,
     log_media_if_new, get_user_xp_and_level, log_completed_task,
-    get_admin_platform_stats, get_username
+    get_admin_platform_stats, get_username, get_latest_media_url
 )
 
 def extract_json_from_text(text):
@@ -139,6 +139,32 @@ def get_callbacks(user_id):
 
 # GLOBAL COMPONENTS
 cookie_manager = stx.CookieManager(key="habitbot_cookie_manager")
+
+# --- INSTANT SYNCHRONOUS SESSION RECOVERY (0ms Page Refresh Survival) ---
+if st.session_state.user_id is None and not st.session_state.logout_triggered:
+    # 1. Immediate URL parameter check (Synchronous, instant on browser reload)
+    q_token = st.query_params.get("session")
+    if q_token:
+        uid_rec = verify_session(q_token)
+        if uid_rec:
+            st.session_state.user_id = uid_rec
+    
+    # 2. Browser cookie fallback
+    if st.session_state.user_id is None:
+        try:
+            c_token = cookie_manager.get("habitbot_v4_session")
+            if c_token and c_token not in ["None", "null", "", "undefined"]:
+                uid_rec = verify_session(c_token)
+                if uid_rec:
+                    st.session_state.user_id = uid_rec
+                    st.query_params["session"] = c_token
+        except Exception:
+            pass
+
+# Restore last-watched custom media URL from SQLite for active user
+if st.session_state.user_id:
+    if not st.session_state.lib_custom_url:
+        st.session_state.lib_custom_url = get_latest_media_url(st.session_state.user_id)
 
 # HELPER FOR HEATMAP
 def show_consistency_heatmap(user_id):
@@ -432,6 +458,10 @@ if st.session_state.user_id is None:
                     if token:
                         st.session_state.user_id = uid
                         st.session_state.logout_triggered = False
+                        st.query_params["session"] = token
+                        # Restore last active video URL
+                        st.session_state.lib_custom_url = get_latest_media_url(uid)
+                        # Save to cookie for 30 days
                         import datetime as dt
                         expiry = dt.datetime.now() + dt.timedelta(days=30)
                         cookie_manager.set("habitbot_v4_session", token, expires_at=expiry)
